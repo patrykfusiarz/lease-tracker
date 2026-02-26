@@ -964,7 +964,9 @@ export default function LeaseTracker() {
   const [importError, setImportError] = useState("");
 
   const [confirmDel, setConfirmDel] = useState(null);
-  const [isDayMode,  setIsDayMode]  = useState(false);
+  const [isDayMode,  setIsDayMode]  = useState(() => {
+    try { const saved = localStorage.getItem('lt_theme'); return saved !== null ? saved === 'day' : true; } catch { return true; }
+  });
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [density, setDensity] = useState("comfortable"); // compact | comfortable
   const [flashingStatus, setFlashingStatus] = useState(null);
@@ -975,7 +977,11 @@ export default function LeaseTracker() {
 
   const toggleTheme = useCallback(() => {
     setThemeAnimating(true);
-    setIsDayMode(v => !v);
+    setIsDayMode(v => {
+      const next = !v;
+      try { localStorage.setItem('lt_theme', next ? 'day' : 'night'); } catch {}
+      return next;
+    });
     setTimeout(() => setThemeAnimating(false), 400);
   }, []);
 

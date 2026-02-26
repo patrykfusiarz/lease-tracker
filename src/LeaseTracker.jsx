@@ -635,7 +635,7 @@ const css = `
   .nav-icon { display: flex; align-items: center; justify-content: center; opacity: 0.45; width: 16px; flex-shrink: 0; }
   .nav-item.active .nav-icon { opacity: 0.65; }
   .nav-count { margin-left: auto; font-size: 10.5px; color: var(--text-nav-count); background: var(--bg-hover-sm); border-radius: 20px; padding: 1px 7px; font-weight: 500; }
-  .app.day .nav-count { background: #e4e6ed; color: #6b7280; }
+  .app.day .nav-count { background: transparent; color: #b0b3be; }
 
   .sidebar-footer { padding: 8px 8px 14px; display: flex; align-items: center; justify-content: space-between; }
 

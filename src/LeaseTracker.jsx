@@ -628,7 +628,7 @@ const css = `
   .nav-item:hover { background: var(--bg-hover-sm); color: var(--text-cell); }
   .nav-item.active { font-weight: 500; }
   /* Day mode active: white card with shadow — Mercury style */
-  .app.day .nav-item.active { background: #ffffff; color: #111827; box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04); }
+  .app.day .nav-item.active { background: rgba(0,0,0,0.04); color: #111827; box-shadow: none; }
   /* Night mode active */
   .app:not(.day) .nav-item.active { background: var(--bg-hover); color: var(--text-primary); }
 

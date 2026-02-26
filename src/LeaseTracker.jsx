@@ -14,9 +14,9 @@ const COLUMNS = [
   { label: "Model",      key: "model"               },
   { label: "Incentive",  key: "privateIncentive"    },
   { label: "Expiration", key: "incentiveExp"        },
-  { label: "Mo. Left",   key: "leaseEnd"            },
+  { label: "Inc. Mo.",   key: "incentiveExp"        },
   { label: "Lease End",  key: "leaseEnd"            },
-  { label: "Days Left",  key: "leaseEnd"            },
+  { label: "Mo. Left",   key: "leaseEnd"            },
   { label: "Status",     key: "status"              },
   { label: "",           key: null                  },
 ];
@@ -34,11 +34,9 @@ const STATUSES = [
   { key: "lost",          label: "Lost Deal",    color: "#9a4050", order: 7 },
 ];
 
-const STATUS_MAP = new Map(STATUSES.map(s => [s.key, s]));
 function statusMeta(key) {
-  return STATUS_MAP.get(key) || STATUSES[0];
+  return STATUSES.find(s => s.key === key) || STATUSES[0];
 }
-
 const EMPTY_FORM = {
   name: "", year: "", model: "", trim: "", bank: "",
   term: "", milesYearly: "", milesTerm: "", currentMiles: "",
@@ -611,10 +609,11 @@ const css = `
   .search-box:focus { border-color: var(--border-input-focus); color: var(--text-primary); width: 240px; }
   .app.day .search-box:focus { box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
   .search-box::placeholder { color: var(--text-secondary); }
+  .kbd-hint { font-size: 10px; color: var(--text-tertiary); letter-spacing: 0.1px; display: flex; align-items: center; gap: 4px; user-select: none; }
+  .kbd { display: inline-flex; align-items: center; justify-content: center; height: 16px; min-width: 16px; padding: 0 4px; background: var(--bg-hover-sm); border: 1px solid var(--border-input); border-radius: 3px; font-size: 9px; font-family: inherit; color: var(--text-secondary); }
 
   .btn-primary { display: flex; align-items: center; gap: 6px; background: var(--btn-primary-bg); color: var(--btn-primary-text); border: none; border-radius: 7px; padding: 0 13px; height: 30px; font-size: 12.5px; font-family: 'Inter', sans-serif; font-weight: 500; cursor: pointer; transition: background 0.15s; white-space: nowrap; letter-spacing: -0.1px; }
   .btn-primary:hover { background: var(--btn-primary-hover); }
-  .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
 
   .btn-secondary { display: flex; align-items: center; gap: 6px; background: transparent; color: var(--text-secondary); border: 1px solid var(--border-input); border-radius: 6px; padding: 5px 12px; font-size: 12px; font-family: 'Inter', sans-serif; font-weight: 500; cursor: pointer; transition: background 0.1s, color 0.1s; white-space: nowrap; }
   .btn-secondary:hover { background: var(--bg-hover); color: var(--text-primary); border-color: var(--border-status); }
@@ -832,6 +831,9 @@ const css = `
   .modal-field select option { background: var(--bg-panel); color: var(--text-primary); }
   .modal-divider { height: 1px; background: var(--border-main); }
   .modal-footer { padding: 12px 18px; border-top: 1px solid var(--border-main); display: flex; justify-content: flex-end; gap: 8px; }
+  .import-pick-card { flex: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; background: var(--bg-input); border: 1px solid var(--border-card); border-radius: 10px; padding: 18px 16px; cursor: pointer; transition: border-color 0.15s, background 0.15s; text-align: left; }
+  .import-pick-card:hover { border-color: var(--border-input-focus); background: var(--bg-hover); }
+  .import-pick-icon { width: 34px; height: 34px; border-radius: 8px; background: var(--bg-hover-sm); border: 1px solid var(--border-input); display: flex; align-items: center; justify-content: center; }
 
   /* ── TOASTS — always dark ── */
   .toast-container { position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 6px; z-index: 9999; pointer-events: none; align-items: flex-end; }
@@ -961,7 +963,8 @@ export default function LeaseTracker() {
 
   const [editMode,  setEditMode]  = useState(false);
   const [editForm,  setEditForm]  = useState({});
-  const [editSaved, setEditSaved] = useState(false);
+  const [editSaved,   setEditSaved]   = useState(false);
+  const [editSaving,  setEditSaving]  = useState(false);
 
   // Notes — simple: show empty state or textarea
   const [noteDraft, setNoteDraft] = useState("");
@@ -984,7 +987,7 @@ export default function LeaseTracker() {
     try { const saved = localStorage.getItem('lt_theme'); return saved !== null ? saved === 'day' : true; } catch { return true; }
   });
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [density, setDensity] = useState(() => { try { return JSON.parse(localStorage.getItem("lt-prefs") || "{}").density || "comfortable"; } catch { return "comfortable"; } });
+  const [density, setDensity] = useState("comfortable"); // compact | comfortable
   const [flashingStatus, setFlashingStatus] = useState(null);
   const [themeAnimating, setThemeAnimating] = useState(false);
   const [densityOpen, setDensityOpen] = useState(false);
@@ -1016,21 +1019,23 @@ export default function LeaseTracker() {
     if (!user) return;
     async function loadFromSupabase() {
       setDbLoading(true);
-      // Single query — fetch customers with their notes embedded (1 round-trip instead of 2)
-      const { data, error } = await supabase
+      // Load customers
+      const { data: custData } = await supabase
         .from("customers")
-        .select("*, notes(*)")
+        .select("*")
         .eq("user_id", user.id)
         .order("created_at", { ascending: true });
 
-      if (error) {
-        addToast("Failed to load data — refresh to try again", "error");
-        setDbLoading(false);
-        return;
-      }
+      // Load notes
+      const { data: notesData } = await supabase
+        .from("notes")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
 
-      if (data) {
-        const mapped = data.map(c => ({
+      if (custData) {
+        // Convert snake_case DB fields to camelCase app fields
+        const mapped = custData.map(c => ({
           id:               c.id,
           name:             c.name,
           year:             c.year,
@@ -1049,18 +1054,20 @@ export default function LeaseTracker() {
           incentiveExp:     c.incentive_exp || "—",
           status:           c.status || "early",
           updatedAt:        c.updated_at,
-          vin:              c.vin || "",
         }));
         dispatch({ type: "LOAD_CUSTOMERS", customers: mapped });
+      }
 
-        // Build notes map from embedded notes — already sorted by DB
+      if (notesData) {
+        // Group notes by customer_id
+        const grouped = {};
+        notesData.forEach(n => {
+          if (!grouped[n.customer_id]) grouped[n.customer_id] = [];
+          grouped[n.customer_id].push({ id: n.id, text: n.text, savedAt: n.saved_at });
+        });
         const notesMap = {};
-        data.forEach(c => {
-          if (c.notes?.length) {
-            // Sort descending by created_at
-            const sorted = [...c.notes].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-            notesMap[c.id] = { history: sorted.map(n => ({ id: n.id, text: n.text, savedAt: n.saved_at })) };
-          }
+        Object.entries(grouped).forEach(([custId, entries]) => {
+          notesMap[custId] = { history: entries };
         });
         dispatch({ type: "LOAD_NOTES", notes: notesMap });
       }
@@ -1068,36 +1075,6 @@ export default function LeaseTracker() {
       setDbLoading(false);
     }
     loadFromSupabase();
-  }, [user]);
-
-  // ── Realtime — keep data live for multi-user environments ──
-  useEffect(() => {
-    if (!user) return;
-    const channel = supabase
-      .channel("meridian-live")
-      .on("postgres_changes",
-        { event: "UPDATE", schema: "public", table: "customers", filter: `user_id=eq.${user.id}` },
-        ({ new: row }) => {
-          const updates = {
-            name: row.name, year: row.year, model: row.model || "—", trim: row.trim || "—",
-            bank: row.bank || "—", term: row.term, milesYearly: row.miles_yearly,
-            milesTerm: row.miles_term, currentMiles: row.current_miles,
-            monthlyPayment: row.monthly_payment, downPayment: row.down_payment,
-            tradeEquity: row.trade_equity, leaseEnd: row.lease_end || "—",
-            privateIncentive: row.private_incentive, incentiveExp: row.incentive_exp || "—",
-            status: row.status || "early", updatedAt: row.updated_at, vin: row.vin || "",
-          };
-          dispatch({ type: "UPDATE_CUSTOMER", id: row.id, updates });
-        }
-      )
-      .on("postgres_changes",
-        { event: "INSERT", schema: "public", table: "notes", filter: `user_id=eq.${user.id}` },
-        ({ new: n }) => {
-          dispatch({ type: "SAVE_NOTE", id: n.customer_id, text: n.text, savedAt: n.saved_at, entryId: n.id });
-        }
-      )
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
   }, [user]);
 
   // ── Keep snapshot fresh while panel is open ──
@@ -1111,7 +1088,7 @@ export default function LeaseTracker() {
 
   // ── Panel ──
 
-  const openPanel = useCallback((id) => {
+  const openPanel = useCallback((id, enterEdit = false) => {
     const c = customers.find(x => x.id === id);
     if (!c) return;
     clearTimeout(closeTimer.current);
@@ -1119,8 +1096,29 @@ export default function LeaseTracker() {
     setSnapCustomer(c);
     setNoteDraft("");
     setNotesOpen(false);
-    setEditMode(false);
     setEditSaved(false);
+    if (enterEdit) {
+      setEditForm({
+        name:             c.name,
+        year:             String(c.year),
+        model:            c.model === "—" ? "" : c.model,
+        trim:             (!c.trim  || c.trim  === "—") ? "" : c.trim,
+        bank:             (!c.bank  || c.bank  === "—") ? "" : c.bank,
+        term:             c.term  ? String(c.term)  : "",
+        milesYearly:      c.milesYearly  ? Number(c.milesYearly).toLocaleString() : "",
+        milesTerm:        c.milesTerm    ? Number(c.milesTerm).toLocaleString() : "",
+        currentMiles:     String(c.currentMiles),
+        monthlyPayment:   c.monthlyPayment ? String(c.monthlyPayment) : "",
+        downPayment:      c.downPayment   ? String(c.downPayment)   : "",
+        tradeEquity:      c.tradeEquity   ? String(c.tradeEquity)   : "",
+        leaseEnd:         c.leaseEnd === "—" ? "" : c.leaseEnd,
+        privateIncentive: c.privateIncentive > 0 ? String(c.privateIncentive) : "",
+        incentiveExp:     c.incentiveExp === "—" ? "" : c.incentiveExp,
+      });
+      setEditMode(true);
+    } else {
+      setEditMode(false);
+    }
     setPanelState("open");
   }, [customers]);
 
@@ -1141,6 +1139,44 @@ export default function LeaseTracker() {
     openPanel(id);
   }, [selected, panelState, openPanel]);
 
+  // ── Keyboard navigation ──
+  useEffect(() => {
+    const handler = (e) => {
+      // Don't intercept when typing in inputs/textareas
+      const tag = document.activeElement?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+
+      if (e.key === "Escape") {
+        if (editMode)       { setEditMode(false); return; }
+        if (panelState === "open") { closePanel(); return; }
+        if (showModal)      { setShowModal(false); return; }
+        if (confirmDel)     { setConfirmDel(null); return; }
+        if (statFilter)     { setStatFilter(null); return; }
+      }
+
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        if (filtered.length === 0) return;
+        const idx = filtered.findIndex(r => r.id === selected);
+        let next;
+        if (e.key === "ArrowDown") next = idx === -1 ? 0 : Math.min(idx + 1, filtered.length - 1);
+        else                       next = idx === -1 ? filtered.length - 1 : Math.max(idx - 1, 0);
+        openPanel(filtered[next].id);
+      }
+
+      if (e.key === "Enter" && selected && panelState === "open" && !editMode) {
+        startEdit(snapCustomer);
+      }
+
+      if (e.key === "n" && !e.metaKey && !e.ctrlKey && panelState !== "open" && !showModal) {
+        setShowModal(true);
+        setModalTab("pick");
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [filtered, selected, panelState, editMode, showModal, confirmDel, statFilter, snapCustomer, openPanel, closePanel, startEdit]);
+
   // ── Notes ──
   // useEffect runs after DOM commit so ref is guaranteed populated when notesOpen flips true
   useEffect(() => {
@@ -1158,14 +1194,14 @@ export default function LeaseTracker() {
     const now = new Date();
     const savedAt = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) + " · " + now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
     const entryId = uid();
-    const { error } = await supabase.from("notes").insert({
+    // Write to Supabase
+    await supabase.from("notes").insert({
       id:          entryId,
       customer_id: selected,
       user_id:     user.id,
       text:        noteDraft.trim(),
       saved_at:    savedAt,
     });
-    if (error) { addToast("Failed to save note — try again", "error"); return; }
     dispatch({ type: "SAVE_NOTE", id: selected, text: noteDraft.trim(), savedAt, entryId });
     setNoteDraft("");
     setNoteSaved(true);
@@ -1197,7 +1233,8 @@ export default function LeaseTracker() {
   }, []);
 
   const saveEdit = useCallback(async () => {
-    if (!selected) return;
+    if (!selected || editSaving) return;
+    setEditSaving(true);
     const form      = normalizeForm(editForm);
     const leaseEnd  = form.leaseEnd;
     const incentiveExp = form.incentiveExp;
@@ -1234,15 +1271,15 @@ export default function LeaseTracker() {
       lease_end:         updates.leaseEnd === "—" ? null : updates.leaseEnd,
       private_incentive: updates.privateIncentive,
       incentive_exp:     updates.incentiveExp === "—" ? null : updates.incentiveExp,
-      // updated_at is set by a DB trigger — do not pass from client
     }).eq("id", selected);
+    setEditSaving(false);
     if (error) { addToast("Failed to save — try again", "error"); return; }
     dispatch({ type: "UPDATE_CUSTOMER", id: selected, updates });
     setEditMode(false);
     setEditSaved(true);
     setTimeout(() => setEditSaved(false), 2000);
     addToast(`${updates.name} saved`);
-  }, [selected, editForm, snapCustomer, addToast]);
+  }, [selected, editForm, snapCustomer, addToast, editSaving]);
 
   // ── Add modal ──
 
@@ -1285,60 +1322,52 @@ export default function LeaseTracker() {
     setImportText("");
   };
 
-  const [addLoading, setAddLoading] = useState(false);
-
   const handleAdd = async () => {
-    if (addLoading) return;
     const customer = buildCustomer(form);
-    setAddLoading(true);
+    // Write to Supabase
     const { error } = await supabase.from("customers").insert({
-      id:                customer.id,
-      user_id:           user.id,
-      name:              customer.name,
-      year:              customer.year,
-      model:             customer.model === "—" ? null : customer.model,
-      trim:              customer.trim  === "—" ? null : customer.trim,
-      bank:              customer.bank  === "—" ? null : customer.bank,
-      term:              customer.term,
-      miles_yearly:      customer.milesYearly,
-      miles_term:        customer.milesTerm,
-      current_miles:     customer.currentMiles,
-      monthly_payment:   customer.monthlyPayment,
-      down_payment:      customer.downPayment,
-      trade_equity:      customer.tradeEquity,
-      lease_end:         customer.leaseEnd === "—" ? null : customer.leaseEnd,
+      id:               customer.id,
+      user_id:          user.id,
+      name:             customer.name,
+      year:             customer.year,
+      model:            customer.model === "—" ? null : customer.model,
+      trim:             customer.trim  === "—" ? null : customer.trim,
+      bank:             customer.bank  === "—" ? null : customer.bank,
+      term:             customer.term,
+      miles_yearly:     customer.milesYearly,
+      miles_term:       customer.milesTerm,
+      current_miles:    customer.currentMiles,
+      monthly_payment:  customer.monthlyPayment,
+      down_payment:     customer.downPayment,
+      trade_equity:     customer.tradeEquity,
+      lease_end:        customer.leaseEnd === "—" ? null : customer.leaseEnd,
       private_incentive: customer.privateIncentive,
-      incentive_exp:     customer.incentiveExp === "—" ? null : customer.incentiveExp,
-      status:            customer.status,
-      // created_at / updated_at set by DB defaults
+      incentive_exp:    customer.incentiveExp === "—" ? null : customer.incentiveExp,
+      status:           customer.status,
     });
-    setAddLoading(false);
-    if (error) { addToast("Failed to add customer — try again", "error"); return; }
-    dispatch({ type: "ADD_CUSTOMER", customer });
-    closeModal();
-    // Open panel directly — no setTimeout hack needed, customer is in state now
-    setSelected(customer.id);
-    setSnapCustomer(customer);
-    setNoteDraft("");
-    setNotesOpen(false);
-    setEditMode(false);
-    setEditSaved(false);
-    setPanelState("open");
-    addToast(`${customer.name} added`);
+    if (!error) {
+      dispatch({ type: "ADD_CUSTOMER", customer });
+      closeModal();
+      setSelected(customer.id);
+      setSnapCustomer(customer);
+      setNoteDraft("");
+      setNotesOpen(false);
+      setEditMode(false);
+      setEditSaved(false);
+      setPanelState("open");
+      addToast(`${customer.name} added`);
+    }
   };
 
   // ── Delete ──
 
   const confirmDelete = (id, e) => { e.stopPropagation(); setConfirmDel(id); };
   const executeDelete = async () => {
-    const delId   = confirmDel;
-    const delName = customers.find(x => x.id === delId)?.name || "Customer";
-    // Close dialog optimistically — but only dispatch after DB confirms
+    const delName = customers.find(x => x.id === confirmDel)?.name || "Customer";
+    if (confirmDel === selected) closePanel();
+    await supabase.from("customers").delete().eq("id", confirmDel);
+    dispatch({ type: "DELETE_CUSTOMER", id: confirmDel });
     setConfirmDel(null);
-    const { error } = await supabase.from("customers").delete().eq("id", delId);
-    if (error) { addToast("Failed to delete — try again", "error"); return; }
-    if (delId === selected) closePanel();
-    dispatch({ type: "DELETE_CUSTOMER", id: delId });
     addToast(`${delName} deleted`, "info");
   };
 
@@ -1351,8 +1380,8 @@ export default function LeaseTracker() {
 
   // ── Derived ──
 
-  // Stat counts — only re-compute when customers list changes, not on search/sort
-  const { urgentCount, soonCount, withIncentive, milesAtRisk } = useMemo(() => {
+  const { filtered, urgentCount, soonCount, withIncentive, milesAtRisk } = useMemo(() => {
+    const q = search.toLowerCase();
     let urgent = 0, soon = 0, incentive = 0, miles = 0;
     customers.forEach(c => {
       const ml = calcMonthsLeft(c.leaseEnd);
@@ -1363,15 +1392,11 @@ export default function LeaseTracker() {
       const mp = calcMileagePace(c);
       if (mp && (mp.status === "over" || mp.status === "warning")) miles++;
     });
-    return { urgentCount: urgent, soonCount: soon, withIncentive: incentive, milesAtRisk: miles };
-  }, [customers]);
-
-  // Filtered + sorted rows — re-runs on search, sort, or filter change
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-    return customers
+    const all = customers
       .filter(c => {
-        if (!c.name.toLowerCase().includes(q) && !c.model.toLowerCase().includes(q)) return false;
+        const sLabel = STATUS_MAP.get(c.status)?.label?.toLowerCase() || "";
+        const searchable = [c.name, c.model, c.bank, c.trim, c.vin, sLabel].join(" ").toLowerCase();
+        if (q && !searchable.includes(q)) return false;
         if (statFilter === 'urgent')    return calcMonthsLeft(c.leaseEnd) === 0 && calcDaysLeft(c.leaseEnd) > 0;
         if (statFilter === 'soon')      return calcMonthsLeft(c.leaseEnd) >= 1 && calcMonthsLeft(c.leaseEnd) <= 3;
         if (statFilter === 'incentive') return c.privateIncentive > 0;
@@ -1393,6 +1418,7 @@ export default function LeaseTracker() {
           : typeof av === "string" ? av.localeCompare(bv) : av - bv;
         return sortDir === "asc" ? cmp : -cmp;
       });
+    return { filtered: all, urgentCount: urgent, soonCount: soon, withIncentive: incentive, milesAtRisk: miles };
   }, [customers, search, sortKey, sortDir, statFilter]);
 
   const panelVisible = panelState !== "closed";
@@ -1418,7 +1444,11 @@ export default function LeaseTracker() {
           {/* Header — avatar + name + collapse arrow when expanded */}
           <div className="sidebar-header">
             <div className="profile-btn" onClick={() => setShowSettings(true)} title="Account settings">
-              <div className="profile-avatar">{user ? user.name.split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2) : "?"}</div>
+              <div className="profile-avatar" style={{ overflow: user?.avatarUrl ? "hidden" : undefined, padding: 0 }}>
+                {user?.avatarUrl
+                  ? <img src={user.avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 7 }} />
+                  : user ? user.name.split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2) : "?"}
+              </div>
               <span className="profile-name">{user?.name || "Account"}</span>
             </div>
             {!sidebarCollapsed && (
@@ -1475,7 +1505,7 @@ export default function LeaseTracker() {
                 {densityOpen && (
                   <div className="density-menu">
                     {["compact","comfortable"].map(d => (
-                      <div key={d} className={`density-option ${density === d ? "active" : ""}`} onClick={() => { setDensity(d); setDensityOpen(false); try { const p = JSON.parse(localStorage.getItem("lt-prefs") || "{}"); localStorage.setItem("lt-prefs", JSON.stringify({ ...p, density: d })); } catch {} }}>
+                      <div key={d} className={`density-option ${density === d ? "active" : ""}`} onClick={() => { setDensity(d); setDensityOpen(false); }}>
                         {d.charAt(0).toUpperCase() + d.slice(1)}
                         {density === d && <Check size={11} strokeWidth={2.5} />}
                       </div>
@@ -1483,6 +1513,12 @@ export default function LeaseTracker() {
                   </div>
                 )}
               </div>
+              <span className="kbd-hint" title="Keyboard: ↑↓ navigate · Enter edit · N new · Esc close">
+                <span className="kbd">↑↓</span>
+                <span className="kbd">Enter</span>
+                <span className="kbd">N</span>
+                <span className="kbd">Esc</span>
+              </span>
               <button className="btn-primary" onClick={openModal}><UserPlus size={13} strokeWidth={2} />New Customer</button>
             </div>
 
@@ -1531,10 +1567,10 @@ export default function LeaseTracker() {
                     <path d="M50.2 41.2l4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
                   </svg>
                   <span className="empty-state-title">No customers found</span>
-                  <span className="empty-state-sub">{search ? `No results for "${search}"` : statFilter === "urgent" ? "No leases ending this month" : statFilter === "soon" ? "No leases ending in 3 months" : statFilter === "incentive" ? "No customers with active incentives" : "Add a customer to get started"}</span>
+                  <span className="empty-state-sub">{search ? `No results for "${search}"` : statFilter === "urgent" ? "No leases ending this month" : statFilter === "soon" ? "No leases ending in 3 months" : statFilter === "incentive" ? "No customers with active incentives" : statFilter === "miles" ? "No customers with mileage risk" : "Add a customer to get started"}</span>
                 </div>
               ) : filtered.map(row => {
-                const monthsLeft         = calcMonthsLeft(row.leaseEnd);
+                const monthsLeft          = calcMonthsLeft(row.leaseEnd);
                 const incentiveMonthsLeft = calcMonthsLeft(row.incentiveExp);
                 const mc     = monthsColor(monthsLeft, isDayMode);
                 const imc    = monthsColor(incentiveMonthsLeft, isDayMode);
@@ -1543,6 +1579,7 @@ export default function LeaseTracker() {
                 const lLabel = formatTimeLeft(monthsLeft, lDays);
                 const iLabel = formatTimeLeft(incentiveMonthsLeft, iDays);
                 const urgent = monthsLeft === 0;
+                const rowMp  = calcMileagePace(row); // compute once per row
 
                 return (
                   <div
@@ -1555,13 +1592,11 @@ export default function LeaseTracker() {
                       {notes[row.id]?.history?.length > 0 && (
                         <span className="notes-count-badge">{notes[row.id].history.length}</span>
                       )}
-                      {(() => {
-                        const mp = calcMileagePace(row);
-                        if (!mp || mp.status === "ok") return null;
-                        const color = mp.status === "over" ? "#f87171" : "#f59e0b";
-                        const tip = mp.status === "over"
-                          ? `Over allowance by ~${Math.abs(mp.overage).toLocaleString()} mi`
-                          : `On pace to exceed by ~${mp.overage.toLocaleString()} mi`;
+                      {rowMp && rowMp.status !== "ok" && (() => {
+                        const color = rowMp.status === "over" ? "#f87171" : "#f59e0b";
+                        const tip   = rowMp.status === "over"
+                          ? `Over allowance by ~${Math.abs(rowMp.overage).toLocaleString()} mi`
+                          : `On pace to exceed by ~${rowMp.overage.toLocaleString()} mi`;
                         return <span className="miles-warn-dot" style={{ background: color, boxShadow: `0 0 5px ${color}88` }} title={tip} />;
                       })()}
                     </span>
@@ -1589,7 +1624,7 @@ export default function LeaseTracker() {
                     <div style={{ position: "relative" }}>
                       <div className="row-actions" onClick={e => e.stopPropagation()}>
                         <button className="row-action-btn" title="Edit"
-                          onClick={e => { e.stopPropagation(); openPanel(row.id); setTimeout(() => startEdit(row), 20); }}>
+                          onClick={e => { e.stopPropagation(); openPanel(row.id, true); }}>
                           <Pencil size={11} strokeWidth={2} />
                         </button>
                         <button className="row-action-btn danger" title="Delete" onClick={e => confirmDelete(row.id, e)}>
@@ -1617,8 +1652,9 @@ export default function LeaseTracker() {
                     <button className="detail-edit-btn" onClick={() => setEditMode(false)}>Cancel</button>
                   )}
                   <button className={`detail-edit-btn ${editMode ? "active" : ""} ${editSaved ? "saved" : ""}`}
-                    onClick={() => editMode ? saveEdit() : startEdit(c)}>
-                    {editSaved ? <><Check size={11} strokeWidth={2.5} /> Saved</> : editMode ? <><Check size={11} strokeWidth={2.5} /> Save</> : <><Pencil size={11} strokeWidth={2} /> Edit</>}
+                    onClick={() => editMode ? saveEdit() : startEdit(c)}
+                    disabled={editSaving}>
+                    {editSaving ? "Saving…" : editSaved ? <><Check size={11} strokeWidth={2.5} /> Saved</> : editMode ? <><Check size={11} strokeWidth={2.5} /> Save</> : <><Pencil size={11} strokeWidth={2} /> Edit</>}
                   </button>
                   <button className="detail-close" onClick={closePanel}><X size={14} strokeWidth={2} /></button>
                 </div>
@@ -1635,9 +1671,18 @@ export default function LeaseTracker() {
                           className={`status-option ${active ? "active" : ""} ${flashingStatus === s.key ? "flashing" : ""}`}
                           style={active ? { background: s.color, borderColor: s.color } : {}}
                           onClick={async () => {
-                          const { error } = await supabase.from("customers").update({ status: s.key }).eq("id", selected);
-                          if (error) { addToast("Failed to update status", "error"); return; }
+                          if (active) return; // already this status
+                          const prevLabel = statusMeta(c.status || "early").label;
+                          const { error: sErr } = await supabase.from("customers").update({ status: s.key }).eq("id", selected);
+                          if (sErr) { addToast("Failed to update status", "error"); return; }
                           dispatch({ type: "SET_STATUS", id: selected, status: s.key });
+                          // Auto-log status change as a note
+                          const now = new Date();
+                          const savedAt = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) + " · " + now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+                          const entryId = uid();
+                          const noteText = `Status changed: ${prevLabel} → ${s.label}`;
+                          const { error: nErr } = await supabase.from("notes").insert({ id: entryId, customer_id: selected, user_id: user.id, text: noteText, saved_at: savedAt });
+                          if (!nErr) dispatch({ type: "SAVE_NOTE", id: selected, text: noteText, savedAt, entryId });
                           addToast(`Status → ${s.label}`);
                           setFlashingStatus(s.key);
                           setTimeout(() => setFlashingStatus(null), 350);
@@ -1662,7 +1707,7 @@ export default function LeaseTracker() {
                   const selectOpts = {
                     bank:            ["VW Credit","Ally","Affinity","Cal"],
                     term:            ["24","36","39","42","48"],
-                    year:            ["2026","2025","2024","2023","2022"],
+                    year:            Array.from({length:7},(_,i)=>String(new Date().getFullYear()+1-i)),
                     model:           ["Atlas","Taos","Jetta","Tiguan","GLI","Cross Sport","GTI","Golf R"],
                     trim:            ["S","SE","SE Black","SEL","SE Tech","SEL Premium R-Line","SEL Premium R-Line Turbo"],
                     privateIncentive:["750","1000","1250","1500","1750","2000","2250","2500"],
@@ -1824,8 +1869,7 @@ export default function LeaseTracker() {
                                       className="note-entry-delete"
                                       title="Delete note"
                                       onClick={async () => {
-                                      const { error } = await supabase.from("notes").delete().eq("id", entry.id);
-                                      if (error) { addToast("Failed to delete note", "error"); return; }
+                                      await supabase.from("notes").delete().eq("id", entry.id);
                                       dispatch({ type: "DELETE_NOTE_ENTRY", id: selected, entryId: entry.id });
                                     }}
                                     >
@@ -1866,45 +1910,24 @@ export default function LeaseTracker() {
                     <button className="modal-close" onClick={closeModal}><X size={14} strokeWidth={2} /></button>
                   </div>
                   <div style={{ display:"flex", gap:10, padding:"8px 18px 20px" }}>
-                    {/* Manual card */}
-                    <button onClick={() => setModalTab("manual")} style={{
-                      flex:1, display:"flex", flexDirection:"column", alignItems:"flex-start", gap:10,
-                      background:"var(--bg-input)", border:"1px solid var(--border-card)",
-                      borderRadius:10, padding:"18px 16px", cursor:"pointer", transition:"all 0.15s", textAlign:"left",
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor="var(--border-input-focus)"; e.currentTarget.style.background="var(--bg-hover)"; }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor="var(--border-card)"; e.currentTarget.style.background="var(--bg-input)"; }}
-                    >
-                      <div style={{ width:34, height:34, borderRadius:8, background:"var(--bg-hover-sm)", border:"1px solid var(--border-input)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                    <button className="import-pick-card" onClick={() => setModalTab("manual")}>
+                      <div className="import-pick-icon">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                           <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                         </svg>
                       </div>
-                      <div>
-                        <div style={{ fontSize:13, fontWeight:500, color:"var(--text-primary)", letterSpacing:"-0.1px" }}>Enter manually</div>
-                      </div>
+                      <div style={{ fontSize:13, fontWeight:500, color:"var(--text-primary)", letterSpacing:"-0.1px" }}>Enter manually</div>
                     </button>
-
-                    {/* Import card */}
-                    <button onClick={() => setModalTab("import")} style={{
-                      flex:1, display:"flex", flexDirection:"column", alignItems:"flex-start", gap:10,
-                      background:"var(--bg-input)", border:"1px solid var(--border-card)",
-                      borderRadius:10, padding:"18px 16px", cursor:"pointer", transition:"all 0.15s", textAlign:"left",
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor="var(--border-input-focus)"; e.currentTarget.style.background="var(--bg-hover)"; }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor="var(--border-card)"; e.currentTarget.style.background="var(--bg-input)"; }}
-                    >
-                      <div style={{ width:34, height:34, borderRadius:8, background:"var(--bg-hover-sm)", border:"1px solid var(--border-input)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                    <button className="import-pick-card" onClick={() => setModalTab("import")}>
+                      <div className="import-pick-icon">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
                           <polyline points="8 17 12 21 16 17"/>
                           <line x1="12" y1="12" x2="12" y2="21"/>
                           <path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/>
                         </svg>
                       </div>
-                      <div>
-                        <div style={{ fontSize:13, fontWeight:500, color:"var(--text-primary)", letterSpacing:"-0.1px" }}>Quick Import</div>
-                      </div>
+                      <div style={{ fontSize:13, fontWeight:500, color:"var(--text-primary)", letterSpacing:"-0.1px" }}>Quick Import</div>
                     </button>
                   </div>
                 </>
@@ -1984,7 +2007,7 @@ export default function LeaseTracker() {
                     <label>Year</label>
                     <select value={form.year ?? ""} onChange={e => setForm(p => ({ ...p, year: e.target.value }))}>
                       <option value="">—</option>
-                      {["2026","2025","2024","2023","2022"].map(y => <option key={y} value={y}>{y}</option>)}
+                      {Array.from({length:7},(_,i)=>String(new Date().getFullYear()+1-i)).map(y => <option key={y} value={y}>{y}</option>)}
                     </select>
                   </div>
                   <div className="modal-field">
@@ -2102,7 +2125,7 @@ export default function LeaseTracker() {
                     </span>
                   )}
                   <button className="btn-secondary" onClick={closeModal}>Cancel</button>
-                  <button className="btn-primary" onClick={handleAdd} disabled={addLoading}>{addLoading ? "Adding…" : "Add Customer"}</button>
+                  <button className="btn-primary" onClick={handleAdd}>Add Customer</button>
                 </div>
                 </>
               )}

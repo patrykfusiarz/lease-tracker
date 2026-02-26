@@ -138,14 +138,14 @@ export function AuthProvider({ children }) {
     const path = `${user.id}/avatar.${ext}`;
 
     const { error: uploadError } = await supabase.storage
-      .from("avatars")
+      .from("Avatars")
       .upload(path, file, { upsert: true, contentType: file.type });
 
     if (uploadError) return { error: uploadError.message };
 
     // Get the public URL
     const { data: { publicUrl } } = supabase.storage
-      .from("avatars")
+      .from("Avatars")
       .getPublicUrl(path);
 
     // Cache-bust so the browser re-fetches after re-upload

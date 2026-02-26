@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useAuth } from "./auth";
 
 const settingsCss = `
@@ -18,6 +18,7 @@ const settingsCss = `
 
   @keyframes fadeIn  { from { opacity:0; } to { opacity:1; } }
   @keyframes modalIn { from { opacity:0; transform:scale(0.97); } to { opacity:1; transform:scale(1); } }
+  @keyframes spin    { to { transform: rotate(360deg); } }
 
   /* ── Modal shell ── */
   .settings-modal {
@@ -201,8 +202,10 @@ function getInitials(name) {
 }
 
 export function SettingsModal({ onClose }) {
-  const { user, updateProfile, signOut } = useAuth();
+  const { user, updateProfile, updateAvatar, removeAvatar, signOut } = useAuth();
   const [tab, setTab] = useState("profile");
+  const fileInputRef = useRef(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
 
   // Profile tab
   const [name,  setName]  = useState(user?.name  || "");
@@ -218,6 +221,28 @@ export function SettingsModal({ onClose }) {
   const [saving,  setSaving]  = useState(false);
 
   const clearMessages = () => { setError(""); setSuccess(""); };
+
+  const handleAvatarFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAvatarUploading(true);
+    clearMessages();
+    const result = await updateAvatar(file);
+    setAvatarUploading(false);
+    if (result.error) setError(result.error);
+    else setSuccess("Profile picture updated");
+    // reset input so same file can be re-selected
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleRemoveAvatar = async () => {
+    setAvatarUploading(true);
+    clearMessages();
+    const result = await removeAvatar();
+    setAvatarUploading(false);
+    if (result.error) setError(result.error);
+    else setSuccess("Profile picture removed");
+  };
 
   const saveProfile = async () => {
     clearMessages();
@@ -277,10 +302,73 @@ export function SettingsModal({ onClose }) {
             {tab === "profile" && (
               <>
                 <div className="settings-avatar-row">
-                  <div className="settings-avatar">{getInitials(user?.name)}</div>
+                  {/* Hidden file input */}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    style={{ display: "none" }}
+                    onChange={handleAvatarFile}
+                  />
+                  {/* Avatar with click-to-upload overlay */}
+                  <div
+                    onClick={() => !avatarUploading && fileInputRef.current?.click()}
+                    style={{ position: "relative", width: 46, height: 46, flexShrink: 0, cursor: avatarUploading ? "wait" : "pointer" }}
+                    title="Click to change photo"
+                  >
+                    <div className="settings-avatar" style={{ overflow: "hidden" }}>
+                      {avatarUploading
+                        ? <div style={{ width: 14, height: 14, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
+                        : user?.avatarUrl
+                          ? <img src={user.avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                          : getInitials(user?.name)
+                      }
+                    </div>
+                    {/* Hover overlay */}
+                    {!avatarUploading && (
+                      <div style={{
+                        position: "absolute", inset: 0, borderRadius: 10,
+                        background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center",
+                        opacity: 0, transition: "opacity 0.15s",
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.opacity = 1}
+                      onMouseLeave={e => e.currentTarget.style.opacity = 0}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                          <circle cx="12" cy="13" r="4"/>
+                        </svg>
+                      </div>
+                    )}
+                  </div>
                   <div className="settings-avatar-info">
                     <div className="settings-avatar-name">{user?.name}</div>
                     <div className="settings-avatar-email">{user?.email}</div>
+                    <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={avatarUploading}
+                        style={{ fontSize: 11, color: "var(--text-secondary, #6b7280)", background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit", transition: "color 0.1s" }}
+                        onMouseEnter={e => e.currentTarget.style.color = "var(--text-primary, #111827)"}
+                        onMouseLeave={e => e.currentTarget.style.color = "var(--text-secondary, #6b7280)"}
+                      >
+                        {user?.avatarUrl ? "Change photo" : "Upload photo"}
+                      </button>
+                      {user?.avatarUrl && (
+                        <>
+                          <span style={{ fontSize: 11, color: "var(--text-muted, #b0b3be)" }}>·</span>
+                          <button
+                            onClick={handleRemoveAvatar}
+                            disabled={avatarUploading}
+                            style={{ fontSize: 11, color: "var(--text-secondary, #6b7280)", background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit", transition: "color 0.1s" }}
+                            onMouseEnter={e => e.currentTarget.style.color = "#dc2626"}
+                            onMouseLeave={e => e.currentTarget.style.color = "var(--text-secondary, #6b7280)"}
+                          >
+                            Remove
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div className="settings-divider" />

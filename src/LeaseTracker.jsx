@@ -635,7 +635,7 @@ const css = `
   .nav-icon { display: flex; align-items: center; justify-content: center; opacity: 0.45; width: 16px; flex-shrink: 0; }
   .nav-item.active .nav-icon { opacity: 0.65; }
   .nav-count { margin-left: auto; font-size: 10.5px; color: var(--text-nav-count); background: var(--bg-hover-sm); border-radius: 20px; padding: 1px 7px; font-weight: 500; }
-  .app.day .nav-count { background: transparent; color: #b0b3be; }
+  .app.day .nav-count { background: #e8eaef; color: #9ca3af; }
 
   .sidebar-footer { padding: 8px 8px 14px; display: flex; align-items: center; justify-content: space-between; }
 
@@ -1436,7 +1436,12 @@ export default function LeaseTracker() {
           {/* Header — avatar + name + collapse arrow when expanded */}
           <div className="sidebar-header">
             <div className="profile-btn" onClick={() => setShowSettings(true)} title="Account settings">
-              <div className="profile-avatar">{user ? user.name.split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2) : "?"}</div>
+              <div className="profile-avatar">
+                {user?.avatarUrl
+                  ? <img src={user.avatarUrl} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", borderRadius:7 }} />
+                  : user ? user.name.split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2) : "?"
+                }
+              </div>
               <span className="profile-name">{user?.name || "Account"}</span>
             </div>
             {!sidebarCollapsed && (

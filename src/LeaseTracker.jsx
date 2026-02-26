@@ -49,6 +49,12 @@ const EMPTY_FORM = {
 
 function uid() { return crypto.randomUUID(); }
 
+
+// Title-case a name: "CHRISTINA BARILE" → "Christina Barile"
+function titleCase(str) {
+  return (str || "").toLowerCase().replace(/\b\w/g, c => c.toUpperCase()).trim();
+}
+
 // ── DMS paste parser ──────────────────────────────────────────────────────────
 function parseDMS(raw) {
   // Normalize: remove CR, tabs to spaces, collapse multiple spaces, trim each line
@@ -71,6 +77,15 @@ function parseDMS(raw) {
   let model = "";
   for (const m of MODELS) { if (vehicleRaw.toLowerCase().includes(m.toLowerCase())) { model = m; break; } }
 
+  // Trim: look for known trim codes after the model name
+  const TRIMS = ["SE Black","SEL Premium R-Line Turbo","SEL Premium R-Line","SEL Premium","SEL","SE Tech","SE","S","GLI","R-Line"];
+  let trim = "";
+  for (const t of TRIMS) {
+    // Match trim as a whole word, not inside a longer word
+    const trimRe = new RegExp("\\b" + t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b", "i");
+    if (trimRe.test(vehicleRaw)) { trim = t; break; }
+  }
+
   // VIN: first 17-char VIN after "VIN:"
   const vin = get(/VIN:\s*([A-HJ-NPR-Z0-9]{17})/i);
 
@@ -89,7 +104,7 @@ function parseDMS(raw) {
   // Financials
   const monthlyPayment = num(get(/Monthly Payment:\s*\$?([\d,]+\.?\d*)/));
   const dpRaw = num(get(/Down Payment:\s*\$?([\d,]+\.?\d*)/));
-  const downPayment = (dpRaw === "0.00" || dpRaw === "0") ? "" : dpRaw;
+  const downPayment = dpRaw || "0";
 
   // Trade equity
   const allowance = parseFloat(num(get(/Total Trade Allowance:\s*\$?([\d,]+\.?\d*)/))) || 0;
@@ -113,7 +128,7 @@ function parseDMS(raw) {
 
   const isLease = /Lease Turn-in/i.test(full);
 
-  return { name, year, model, vin, term, milesYearly, milesTerm, currentMiles,
+  return { name, year, model, trim, vin, term, milesYearly, milesTerm, currentMiles,
            monthlyPayment, downPayment, tradeEquity, leaseEnd, bank, isLease };
 }
 
@@ -1128,15 +1143,15 @@ export default function LeaseTracker() {
       ? Number(parsed.milesYearly).toLocaleString()
       : "";
     setForm({
-      name:             parsed.name,
+      name:             titleCase(parsed.name),
       year:             parsed.year,
       model:            parsed.model,
-      trim:             "",
+      trim:             parsed.trim || "",
       bank:             parsed.bank,
       term:             parsed.term,
       milesYearly:      milesYearlyFormatted,
       milesTerm:        parsed.milesTerm ? Number(parsed.milesTerm).toLocaleString() : "",
-      currentMiles:     parsed.currentMiles,
+      currentMiles:     "0",
       monthlyPayment:   parsed.monthlyPayment,
       downPayment:      parsed.downPayment,
       tradeEquity:      parsed.tradeEquity,
@@ -1815,6 +1830,7 @@ export default function LeaseTracker() {
                           value={form.name}
                           autoFocus
                           onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+                          onBlur={e => setForm(p => ({ ...p, name: titleCase(e.target.value) }))}
                           onKeyDown={e => { if (e.key === "Escape") closeModal(); if (e.key === "Enter") handleAdd(); }}
                         />
                       </div>

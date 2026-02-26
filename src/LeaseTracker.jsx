@@ -56,12 +56,12 @@ function parseDMS(raw) {
   const get = (re) => { const m = text.match(re); return m ? m[1].trim() : ""; };
   const money = (s) => s ? s.replace(/[$,]/g, "").trim() : "";
 
-  // Name — first line, everything before first " - Purchase Information"
-  // Handles: "CHRISTINA BARILE   -  Purchase Information"
-  // Also handles leading whitespace
-  const firstLine = (text.split("\n")[0] || "").trim();
-  const nameMatch = firstLine.match(/^([A-Z][A-Z\s]+?)\s{1,}-/);
-  const name = nameMatch ? nameMatch[1].trim() : firstLine.split(/\s*-\s*/)[0].trim();
+  // Name — scan ALL lines for the one containing "Purchase Information"
+  // This is immune to leading blank lines, spaces, or any other junk at the top
+  const lines = text.split("\n");
+  const nameLine = lines.find(l => /Purchase Information/i.test(l)) || "";
+  const nameMatch = nameLine.match(/([A-Z][A-Z\s]+?)\s*-\s*Purchase Information/i);
+  const name = nameMatch ? nameMatch[1].trim() : "";
 
   // Vehicle — between "Vehicle Purchased:" and "VIN:"
   const vpMatch = text.match(/Vehicle Purchased:\s*([\s\S]+?)(?=VIN:)/);
@@ -81,7 +81,7 @@ function parseDMS(raw) {
   const currentMiles = milMatch ? milMatch[1] : "";
 
   // Lease terms
-  const term = get(/\bTerm:\s*(\d+)/);
+  const term = get(/Term:\s*(\d+)/);
   const myRaw = get(/Total Lease Mileage:\s*(\d[\d,]*)/i);
   const milesYearly = myRaw.replace(/,/g, "");
   const milesTerm = (milesYearly && term)
@@ -107,7 +107,7 @@ function parseDMS(raw) {
   }
 
   // Bank
-  const bankRaw = get(/Financed Through:\s*([^\n]+)/);
+  const bankRaw = get(/Financed Through:\s*([A-Za-z0-9 ]+?)(?=Back Gross|$|\n)/);
   const BANKS = { "VCIL": "VW Credit", "VW CREDIT": "VW Credit", "ALLY": "Ally", "AFFINITY": "Affinity", "CAL": "Cal", "CASH": "" };
   const bank = BANKS[(bankRaw||"").trim().toUpperCase()] ?? bankRaw;
 

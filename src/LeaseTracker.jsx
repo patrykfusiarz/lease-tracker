@@ -1109,8 +1109,8 @@ export default function LeaseTracker() {
 
   // ── Add modal ──
 
-  const openModal  = () => { setForm(EMPTY_FORM); setShowModal(true); setModalTab("manual"); setImportText(""); setImportError(""); };
-  const closeModal = () => { setShowModal(false); setForm(EMPTY_FORM); setModalTab("manual"); setImportText(""); setImportError(""); };
+  const openModal  = () => { setForm(EMPTY_FORM); setShowModal(true); setModalTab("pick"); setImportText(""); setImportError(""); };
+  const closeModal = () => { setShowModal(false); setForm(EMPTY_FORM); setModalTab("pick"); setImportText(""); setImportError(""); };
 
   const isDuplicate = useMemo(() => {
     if (!form.name.trim()) return false;
@@ -1693,48 +1693,133 @@ export default function LeaseTracker() {
         {showModal && (
           <div className="modal-overlay" onClick={closeModal}>
             <div className="modal" onClick={e => e.stopPropagation()}>
-              <div className="modal-topbar">
-                <div style={{ display:"flex", alignItems:"center", gap:0, background:"var(--bg-input,#1c2130)", borderRadius:7, padding:2, border:"1px solid var(--border-subtle,#252d3e)" }}>
-                  {[["manual","✏ Manual"],["import","⬆ Import DMS"]].map(([tab, label]) => (
-                    <button key={tab} onClick={() => { setModalTab(tab); setImportError(""); }}
-                      style={{ padding:"4px 12px", borderRadius:5, border:"none", fontSize:11, fontFamily:"inherit", fontWeight:500, cursor:"pointer", transition:"all 0.12s",
-                        background: modalTab === tab ? (isDayMode ? "#2a4a7a" : "#2a4a7a") : "transparent",
-                        color: modalTab === tab ? "#c8daf4" : "var(--text-secondary)" }}>
-                      {label}
-                    </button>
-                  ))}
-                </div>
-                <button className="modal-close" onClick={closeModal}><X size={14} strokeWidth={2} /></button>
-              </div>
-              {/* ── Import tab ── */}
-              {modalTab === "import" && (
-                <div className="modal-body" style={{ display:"flex", flexDirection:"column", gap:12 }}>
-                  <p style={{ fontSize:12, color:"var(--text-secondary)", lineHeight:1.6 }}>
-                    Open your customer's purchase info page in your DMS, press <strong style={{color:"var(--text-primary)"}}>Cmd+A</strong> then <strong style={{color:"var(--text-primary)"}}>Cmd+C</strong> to copy everything, then paste below.
-                  </p>
-                  <textarea
-                    autoFocus
-                    placeholder="Paste DMS text here..."
-                    value={importText}
-                    onChange={e => { setImportText(e.target.value); setImportError(""); }}
-                    style={{ width:"100%", height:180, background:"var(--bg-input,#1c2130)", border:"1px solid var(--border-subtle,#252d3e)", borderRadius:7, padding:"10px 12px", fontSize:12, fontFamily:"inherit", color:"var(--text-primary)", resize:"none", outline:"none", lineHeight:1.5 }}
-                  />
-                  {importError && (
-                    <div style={{ fontSize:11.5, color:"#f0a0a0", background:"#1a0e0e", border:"1px solid #3a1a1a", borderRadius:6, padding:"8px 12px", lineHeight:1.5 }}>
-                      ⚠ {importError}
+
+              {/* ── STEP 0: Picker ── */}
+              {modalTab === "pick" && (
+                <>
+                  <div className="modal-topbar" style={{ borderBottom:"none", paddingBottom:8 }}>
+                    <div style={{ display:"flex", flexDirection:"column", gap:2 }}>
+                      <span style={{ fontSize:14, fontWeight:500, color:"var(--text-primary)", letterSpacing:"-0.2px" }}>New Customer</span>
+                      <span style={{ fontSize:11, color:"var(--text-secondary)" }}>How would you like to add them?</span>
                     </div>
-                  )}
-                  <div style={{ display:"flex", justifyContent:"flex-end", gap:8 }}>
-                    <button className="btn-secondary" onClick={closeModal}>Cancel</button>
-                    <button className="btn-primary" onClick={handleParse} disabled={!importText.trim()}>
-                      Parse & Fill Form
+                    <button className="modal-close" onClick={closeModal}><X size={14} strokeWidth={2} /></button>
+                  </div>
+                  <div style={{ display:"flex", gap:10, padding:"8px 18px 20px" }}>
+                    {/* Manual card */}
+                    <button onClick={() => setModalTab("manual")} style={{
+                      flex:1, display:"flex", flexDirection:"column", alignItems:"flex-start", gap:10,
+                      background:"var(--bg-input,#1c2130)", border:"1px solid var(--border-subtle,#252d3e)",
+                      borderRadius:10, padding:"18px 16px", cursor:"pointer", transition:"all 0.15s", textAlign:"left",
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor="#3b6fd4"; e.currentTarget.style.background="#17213a"; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor="var(--border-subtle,#252d3e)"; e.currentTarget.style.background="var(--bg-input,#1c2130)"; }}
+                    >
+                      <div style={{ width:34, height:34, borderRadius:8, background:"#1a2540", border:"1px solid #2a3a5a", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5a8fd4" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
+                      </div>
+                      <div>
+                        <div style={{ fontSize:13, fontWeight:500, color:"var(--text-primary)", marginBottom:4, letterSpacing:"-0.1px" }}>Enter manually</div>
+                        <div style={{ fontSize:11, color:"var(--text-secondary)", lineHeight:1.5 }}>Type in the customer details yourself</div>
+                      </div>
+                    </button>
+
+                    {/* Import card */}
+                    <button onClick={() => setModalTab("import")} style={{
+                      flex:1, display:"flex", flexDirection:"column", alignItems:"flex-start", gap:10,
+                      background:"var(--bg-input,#1c2130)", border:"1px solid var(--border-subtle,#252d3e)",
+                      borderRadius:10, padding:"18px 16px", cursor:"pointer", transition:"all 0.15s", textAlign:"left",
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor="#3b6fd4"; e.currentTarget.style.background="#17213a"; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor="var(--border-subtle,#252d3e)"; e.currentTarget.style.background="var(--bg-input,#1c2130)"; }}
+                    >
+                      <div style={{ width:34, height:34, borderRadius:8, background:"#1a2540", border:"1px solid #2a3a5a", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5a8fd4" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="8 17 12 21 16 17"/>
+                          <line x1="12" y1="12" x2="12" y2="21"/>
+                          <path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/>
+                        </svg>
+                      </div>
+                      <div>
+                        <div style={{ fontSize:13, fontWeight:500, color:"var(--text-primary)", marginBottom:4, letterSpacing:"-0.1px" }}>Import from DMS</div>
+                        <div style={{ fontSize:11, color:"var(--text-secondary)", lineHeight:1.5 }}>Paste from your CRM — auto-fills everything</div>
+                      </div>
                     </button>
                   </div>
-                </div>
+                </>
               )}
 
-              {/* ── Manual tab ── */}
-              {modalTab === "manual" && <div className="modal-body">
+              {/* ── STEP 1a: Import tab ── */}
+              {modalTab === "import" && (
+                <>
+                  <div className="modal-topbar" style={{ paddingBottom:12 }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                      <button onClick={() => setModalTab("pick")} style={{ background:"none", border:"none", cursor:"pointer", color:"var(--text-secondary)", display:"flex", alignItems:"center", padding:0 }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                      </button>
+                      <span style={{ fontSize:14, fontWeight:500, color:"var(--text-primary)", letterSpacing:"-0.2px" }}>Import from DMS</span>
+                    </div>
+                    <button className="modal-close" onClick={closeModal}><X size={14} strokeWidth={2} /></button>
+                  </div>
+                  <div className="modal-body" style={{ display:"flex", flexDirection:"column", gap:12 }}>
+                    <p style={{ fontSize:12, color:"var(--text-secondary)", lineHeight:1.7, background:"var(--bg-input,#1c2130)", border:"1px solid var(--border-subtle,#252d3e)", borderRadius:7, padding:"10px 12px" }}>
+                      Open your customer's purchase info page in your DMS, press <strong style={{color:"var(--text-primary)"}}>Cmd+A</strong> then <strong style={{color:"var(--text-primary)"}}>Cmd+C</strong> to copy everything, then paste below.
+                    </p>
+                    <textarea
+                      autoFocus
+                      placeholder="Paste DMS text here..."
+                      value={importText}
+                      onChange={e => { setImportText(e.target.value); setImportError(""); }}
+                      style={{ width:"100%", height:180, background:"var(--bg-input,#1c2130)", border:"1px solid var(--border-subtle,#252d3e)", borderRadius:7, padding:"10px 12px", fontSize:12, fontFamily:"inherit", color:"var(--text-primary)", resize:"none", outline:"none", lineHeight:1.5, transition:"border-color 0.15s" }}
+                      onFocus={e => e.target.style.borderColor="#3b6fd4"}
+                      onBlur={e => e.target.style.borderColor="var(--border-subtle,#252d3e)"}
+                    />
+                    {importError && (
+                      <div style={{ fontSize:11.5, color:"#f0a0a0", background:"#1a0e0e", border:"1px solid #3a1a1a", borderRadius:6, padding:"8px 12px", lineHeight:1.5 }}>
+                        ⚠ {importError}
+                      </div>
+                    )}
+                    <div style={{ display:"flex", justifyContent:"flex-end", gap:8 }}>
+                      <button className="btn-secondary" onClick={closeModal}>Cancel</button>
+                      <button className="btn-primary" onClick={handleParse} disabled={!importText.trim()}>
+                        Parse &amp; Fill Form
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* ── STEP 1b: Manual tab ── */}
+              {modalTab === "manual" && (
+                <>
+                  <div className="modal-topbar" style={{ paddingBottom:12 }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                      <button onClick={() => setModalTab("pick")} style={{ background:"none", border:"none", cursor:"pointer", color:"var(--text-secondary)", display:"flex", alignItems:"center", padding:0 }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                      </button>
+                      <span style={{ fontSize:14, fontWeight:500, color:"var(--text-primary)", letterSpacing:"-0.2px" }}>
+                        {form.name ? form.name : "New Customer"}
+                      </span>
+                    </div>
+                    <button className="modal-close" onClick={closeModal}><X size={14} strokeWidth={2} /></button>
+                  </div>
+                  <div className="modal-body">
+                    {/* Name */}
+                    <div className="modal-row cols-1" style={{ marginBottom:4 }}>
+                      <div className="modal-field">
+                        <label>Full Name</label>
+                        <input
+                          placeholder="e.g. Christina Barile"
+                          value={form.name}
+                          autoFocus
+                          onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+                          onKeyDown={e => { if (e.key === "Escape") closeModal(); if (e.key === "Enter") handleAdd(); }}
+                        />
+                      </div>
+                    </div>
+                    <div className="modal-divider" />
                 {/* Row 1 — Vehicle */}
                 <div className="modal-row cols-3">
                   <div className="modal-field">
@@ -1851,16 +1936,19 @@ export default function LeaseTracker() {
                     <input placeholder="28,400" value={form.currentMiles ?? ""} onChange={e => setForm(p => ({ ...p, currentMiles: e.target.value }))} onKeyDown={e => { if (e.key === "Escape") closeModal(); }} />
                   </div>
                 </div>
-              </div>}
-              {modalTab === "manual" && <div className="modal-footer">
-                {isDuplicate && (
-                  <span style={{ fontSize: 11, color: isDayMode ? "#b45309" : "#f59e0b", flex: 1, display: "flex", alignItems: "center", gap: 5 }}>
-                    ⚠ A customer named "{form.name.trim()}" already exists
-                  </span>
-                )}
-                <button className="btn-secondary" onClick={closeModal}>Cancel</button>
-                <button className="btn-primary" onClick={handleAdd}>Add Customer</button>
-              </div>}
+                </div>
+                <div className="modal-footer">
+                  {isDuplicate && (
+                    <span style={{ fontSize: 11, color: isDayMode ? "#b45309" : "#f59e0b", flex: 1, display: "flex", alignItems: "center", gap: 5 }}>
+                      ⚠ A customer named "{form.name.trim()}" already exists
+                    </span>
+                  )}
+                  <button className="btn-secondary" onClick={closeModal}>Cancel</button>
+                  <button className="btn-primary" onClick={handleAdd}>Add Customer</button>
+                </div>
+                </>
+              )}
+
             </div>
           </div>
         )}

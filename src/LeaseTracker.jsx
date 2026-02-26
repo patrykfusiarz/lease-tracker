@@ -1736,8 +1736,7 @@ export default function LeaseTracker() {
                         </svg>
                       </div>
                       <div>
-                        <div style={{ fontSize:13, fontWeight:500, color:"var(--text-primary)", marginBottom:4, letterSpacing:"-0.1px" }}>Enter manually</div>
-                        <div style={{ fontSize:11, color:"var(--text-secondary)", lineHeight:1.5 }}>Type in the customer details yourself</div>
+                        <div style={{ fontSize:13, fontWeight:500, color:"var(--text-primary)", letterSpacing:"-0.1px" }}>Enter manually</div>
                       </div>
                     </button>
 
@@ -1758,8 +1757,7 @@ export default function LeaseTracker() {
                         </svg>
                       </div>
                       <div>
-                        <div style={{ fontSize:13, fontWeight:500, color:"var(--text-primary)", marginBottom:4, letterSpacing:"-0.1px" }}>Import from DMS</div>
-                        <div style={{ fontSize:11, color:"var(--text-secondary)", lineHeight:1.5 }}>Paste from your CRM — auto-fills everything</div>
+                        <div style={{ fontSize:13, fontWeight:500, color:"var(--text-primary)", letterSpacing:"-0.1px" }}>Quick Import</div>
                       </div>
                     </button>
                   </div>
@@ -1774,17 +1772,15 @@ export default function LeaseTracker() {
                       <button onClick={() => setModalTab("pick")} style={{ background:"none", border:"none", cursor:"pointer", color:"var(--text-secondary)", display:"flex", alignItems:"center", padding:0 }}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
                       </button>
-                      <span style={{ fontSize:14, fontWeight:500, color:"var(--text-primary)", letterSpacing:"-0.2px" }}>Import from DMS</span>
+                      <span style={{ fontSize:14, fontWeight:500, color:"var(--text-primary)", letterSpacing:"-0.2px" }}>Quick Import</span>
                     </div>
                     <button className="modal-close" onClick={closeModal}><X size={14} strokeWidth={2} /></button>
                   </div>
                   <div className="modal-body" style={{ display:"flex", flexDirection:"column", gap:12 }}>
-                    <p style={{ fontSize:12, color:"var(--text-secondary)", lineHeight:1.7, background:"var(--bg-input,#1c2130)", border:"1px solid var(--border-subtle,#252d3e)", borderRadius:7, padding:"10px 12px" }}>
-                      Open your customer's purchase info page in your DMS, press <strong style={{color:"var(--text-primary)"}}>Cmd+A</strong> then <strong style={{color:"var(--text-primary)"}}>Cmd+C</strong> to copy everything, then paste below.
-                    </p>
+
                     <textarea
                       autoFocus
-                      placeholder="Paste DMS text here..."
+                      placeholder="Paste CRM data here..."
                       value={importText}
                       onChange={e => { setImportText(e.target.value); setImportError(""); }}
                       style={{ width:"100%", height:180, background:"var(--bg-input,#1c2130)", border:"1px solid var(--border-subtle,#252d3e)", borderRadius:7, padding:"10px 12px", fontSize:12, fontFamily:"inherit", color:"var(--text-primary)", resize:"none", outline:"none", lineHeight:1.5, transition:"border-color 0.15s" }}

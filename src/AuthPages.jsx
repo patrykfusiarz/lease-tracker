@@ -369,7 +369,8 @@ const LeftPanel = () => (
 );
 
 export function AuthPage() {
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, timedOut } = useAuth();
+  const [rememberMe, setRememberMe] = useState(false);
   const [view,      setView]      = useState("signin");
   const [name,      setName]      = useState("");
   const [email,     setEmail]     = useState("");
@@ -392,7 +393,7 @@ export function AuthPage() {
     setError("");
     if (!email || !password) return;
     setLoading(true);
-    const result = await signIn(email.trim().toLowerCase(), password);
+    const result = await signIn(email.trim().toLowerCase(), password, rememberMe);
     setLoading(false);
     if (result.error) setError(result.error);
   };
@@ -419,6 +420,11 @@ export function AuthPage() {
 
           {/* Sign In */}
           <div className={`auth-form-panel ${view !== "signin" ? "hidden" : ""}`}>
+            {timedOut && (
+              <div style={{ marginBottom:20, padding:"10px 14px", borderRadius:8, background:"#141820", border:"1px solid #2a3550", fontSize:12, color:"#8ab4f8", lineHeight:1.6 }}>
+                🔒 You were signed out after 20 minutes of inactivity.
+              </div>
+            )}
             <div className="auth-form-heading">Welcome back</div>
             <div className="auth-form-sub">Sign in to your account</div>
             {error && view === "signin" && <div className="auth-error">{error}</div>}
@@ -430,6 +436,18 @@ export function AuthPage() {
               <div className="auth-field">
                 <label>Password</label>
                 <input type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" />
+              </div>
+              <div style={{ display:"flex", alignItems:"center", gap:8, margin:"4px 0 2px" }}>
+                <input
+                  type="checkbox"
+                  id="rememberMe"
+                  checked={rememberMe}
+                  onChange={e => setRememberMe(e.target.checked)}
+                  style={{ width:13, height:13, accentColor:"#3b6fd4", cursor:"pointer" }}
+                />
+                <label htmlFor="rememberMe" style={{ fontSize:12, color:"var(--text-2)", cursor:"pointer", userSelect:"none", fontFamily:"'DM Sans', sans-serif" }}>
+                  Remember me
+                </label>
               </div>
               <button className="auth-submit-btn" type="submit" disabled={loading || !email || !password}>
                 {loading ? "Signing in…" : "Sign In"}

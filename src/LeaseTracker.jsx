@@ -380,7 +380,7 @@ function loadState() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) return JSON.parse(raw);
   } catch {}
-  return { customers: SEED_CUSTOMERS, notes: {} };
+  return { customers: [], notes: {} };
 }
 
 function reducer(state, action) {

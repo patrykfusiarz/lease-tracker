@@ -813,18 +813,33 @@ const css = `
   .modal-footer { padding: 12px 18px; border-top: 1px solid var(--border-main); display: flex; justify-content: flex-end; gap: 8px; }
 
   /* ── Toasts ── */
-  .toast-container { position: fixed; bottom: 24px; right: 24px; display: flex; flex-direction: column-reverse; gap: 8px; z-index: 9999; pointer-events: none; }
-  .toast { display: flex; align-items: center; gap: 10px; background: #111520; border: 1px solid #1e2a3a; border-radius: 9px; padding: 11px 14px; min-width: 220px; max-width: 320px; box-shadow: 0 4px 24px rgba(0,0,0,0.4); pointer-events: all; position: relative; overflow: hidden; animation: toastIn 0.22s cubic-bezier(0.16,1,0.3,1) both; }
-  .toast.leaving { animation: toastOut 0.18s ease-in forwards; }
-  .toast-icon { flex-shrink: 0; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; }
-  .toast-icon.success { background: rgba(42,106,74,0.3); color: #4ade80; }
-  .toast-icon.error   { background: rgba(122,42,42,0.3); color: #f87171; }
-  .toast-icon.info    { background: rgba(59,111,212,0.2); color: #60a5fa; }
-  .toast-icon.warning { background: rgba(122,90,26,0.3); color: #fbbf24; }
-  .toast-message { flex: 1; font-size: 12px; color: var(--text-primary); line-height: 1.4; letter-spacing: -0.1px; }
-  .toast-progress { position: absolute; bottom: 0; left: 0; height: 2px; background: #2a4a7a; border-radius: 0 0 0 9px; animation: toastProgress 3s linear forwards; }
-  @keyframes toastIn { from { opacity: 0; transform: translateX(16px) scale(0.96); } to { opacity: 1; transform: translateX(0) scale(1); } }
-  @keyframes toastOut { from { opacity: 1; transform: translateX(0) scale(1); } to { opacity: 0; transform: translateX(16px) scale(0.96); } }
+  .toast-container { position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 6px; z-index: 9999; pointer-events: none; align-items: flex-end; }
+  .toast {
+    display: flex; align-items: center; gap: 9px;
+    background: rgba(13,16,24,0.92);
+    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 10px;
+    padding: 10px 13px 10px 10px;
+    min-width: 200px; max-width: 300px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.04) inset;
+    pointer-events: all; position: relative; overflow: hidden;
+    animation: toastIn 0.28s cubic-bezier(0.16,1,0.3,1) both;
+  }
+  .toast.leaving { animation: toastOut 0.2s cubic-bezier(0.4,0,1,1) forwards; }
+  .toast-dot { flex-shrink: 0; width: 6px; height: 6px; border-radius: 50%; margin-left: 2px; }
+  .toast-dot.success { background: #34d399; box-shadow: 0 0 6px rgba(52,211,153,0.6); }
+  .toast-dot.error   { background: #f87171; box-shadow: 0 0 6px rgba(248,113,113,0.6); }
+  .toast-dot.info    { background: #60a5fa; box-shadow: 0 0 6px rgba(96,165,250,0.6); }
+  .toast-dot.warning { background: #fbbf24; box-shadow: 0 0 6px rgba(251,191,36,0.6); }
+  .toast-message { flex: 1; font-size: 12px; font-weight: 400; color: rgba(255,255,255,0.82); line-height: 1; letter-spacing: -0.1px; white-space: nowrap; }
+  .toast-progress { position: absolute; bottom: 0; left: 0; height: 1.5px; border-radius: 0 1px 0 10px; animation: toastProgress 3s linear forwards; }
+  .toast-progress.success { background: linear-gradient(90deg, #34d399, transparent); }
+  .toast-progress.error   { background: linear-gradient(90deg, #f87171, transparent); }
+  .toast-progress.info    { background: linear-gradient(90deg, #60a5fa, transparent); }
+  .toast-progress.warning { background: linear-gradient(90deg, #fbbf24, transparent); }
+  @keyframes toastIn  { from { opacity:0; transform: translateY(6px) scale(0.97); } to { opacity:1; transform: translateY(0) scale(1); } }
+  @keyframes toastOut { from { opacity:1; transform: translateY(0) scale(1); max-height:60px; } to { opacity:0; transform: translateY(4px) scale(0.97); max-height:0; margin-bottom:-6px; } }
   @keyframes toastProgress { from { width: 100%; } to { width: 0%; } }
 `;
 
@@ -906,9 +921,9 @@ function ToastContainer({ toasts }) {
     <div className="toast-container">
       {toasts.map(t => (
         <div key={t.id} className={`toast${t.leaving ? " leaving" : ""}`}>
-          <div className={`toast-icon ${t.type}`}>{TOAST_ICONS[t.type]}</div>
+          <div className={`toast-dot ${t.type}`} />
           <span className="toast-message">{t.message}</span>
-          <div className="toast-progress" />
+          <div className={`toast-progress ${t.type}`} />
         </div>
       ))}
     </div>

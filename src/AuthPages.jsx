@@ -2,117 +2,263 @@ import { useState } from "react";
 import { useAuth } from "./auth";
 
 const authCss = `
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=DM+Mono:wght@400;500&display=swap');
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0d1018;
+    --bg-panel:  #111520;
+    --border:    #1c2235;
+    --accent:    #3b6fd4;
+    --accent-hi: #4d83f0;
+    --text-1:    #e8ecf8;
+    --text-2:    #5a6a8a;
+    --text-3:    #2e3a52;
+    --input-bg:  #0d1220;
+  }
 
   .auth-root {
     min-height: 100vh;
-    background: #0e1117;
+    background: var(--bg);
     display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: 'Inter', sans-serif;
-    padding: 20px;
+    align-items: stretch;
+    font-family: 'DM Sans', sans-serif;
+    overflow: hidden;
   }
 
-  .auth-card {
-    width: 100%;
-    max-width: 380px;
-    background: #131720;
-    border: 1px solid #1e2432;
-    border-radius: 14px;
-    padding: 36px 32px 32px;
-    box-shadow: 0 32px 80px rgba(0,0,0,0.5);
-    animation: authIn 0.2s cubic-bezier(0.16,1,0.3,1);
-  }
-
-  @keyframes authIn {
-    from { opacity: 0; transform: translateY(10px) scale(0.98); }
-    to   { opacity: 1; transform: translateY(0)    scale(1);    }
-  }
-
-  .auth-logo {
+  .auth-left {
+    flex: 1;
     display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 28px;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 48px 56px;
+    position: relative;
+    overflow: hidden;
+    border-right: 1px solid var(--border);
   }
 
-  .auth-logo-mark {
-    width: 32px;
-    height: 32px;
-    background: linear-gradient(135deg, #1a3a6e, #2a5090);
-    border-radius: 8px;
+  .auth-left::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 48px 48px;
+    opacity: 0.35;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .auth-orb1 {
+    position: absolute;
+    width: 600px;
+    height: 600px;
+    border-radius: 50%;
+    background: radial-gradient(circle at center, rgba(59,111,212,0.22) 0%, rgba(59,111,212,0.08) 40%, transparent 70%);
+    top: 10%;
+    left: -5%;
+    pointer-events: none;
+    z-index: 1;
+    animation: authDrift1 10s ease-in-out infinite;
+  }
+
+  .auth-orb2 {
+    position: absolute;
+    width: 340px;
+    height: 340px;
+    border-radius: 50%;
+    background: radial-gradient(circle at center, rgba(100,160,255,0.15) 0%, rgba(80,130,240,0.05) 50%, transparent 70%);
+    top: 45%;
+    left: 35%;
+    pointer-events: none;
+    z-index: 1;
+    animation: authDrift2 7s ease-in-out infinite;
+    animation-delay: -3s;
+  }
+
+  .auth-orb3 {
+    position: absolute;
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    background: radial-gradient(circle at center, rgba(130,180,255,0.12) 0%, transparent 70%);
+    top: 65%;
+    left: 10%;
+    pointer-events: none;
+    z-index: 1;
+    animation: authDrift3 13s ease-in-out infinite;
+    animation-delay: -6s;
+  }
+
+  @keyframes authDrift1 {
+    0%   { transform: translate(0px,   0px)   scale(1);    }
+    25%  { transform: translate(30px, -25px)  scale(1.06); }
+    50%  { transform: translate(10px,  30px)  scale(0.96); }
+    75%  { transform: translate(-20px, 10px)  scale(1.03); }
+    100% { transform: translate(0px,   0px)   scale(1);    }
+  }
+
+  @keyframes authDrift2 {
+    0%   { transform: translate(0px,   0px)   scale(1);    }
+    30%  { transform: translate(-25px, 20px)  scale(1.08); }
+    60%  { transform: translate(20px, -15px)  scale(0.94); }
+    100% { transform: translate(0px,   0px)   scale(1);    }
+  }
+
+  @keyframes authDrift3 {
+    0%   { transform: translate(0px,  0px)   scale(1);   }
+    40%  { transform: translate(18px, 22px)  scale(1.1); }
+    70%  { transform: translate(-10px,-18px) scale(0.9); }
+    100% { transform: translate(0px,  0px)   scale(1);   }
+  }
+
+  .auth-left-content {
+    position: relative;
+    z-index: 2;
     display: flex;
-    align-items: center;
-    justify-content: center;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100%;
+  }
+
+  .auth-brand-name {
     font-size: 13px;
-    font-weight: 700;
-    color: #fff;
-    letter-spacing: -0.3px;
-    flex-shrink: 0;
-  }
-
-  .auth-logo-text {
-    font-size: 14px;
-    font-weight: 600;
-    color: #e6eaf5;
-    letter-spacing: -0.2px;
-  }
-
-  .auth-logo-sub {
-    font-size: 11px;
-    color: #6b7a99;
-    font-weight: 400;
-  }
-
-  .auth-heading {
-    font-size: 20px;
     font-weight: 500;
-    color: #e6eaf5;
-    letter-spacing: -0.4px;
+    color: var(--text-1);
+    animation: authFadeUp 0.6s cubic-bezier(0.16,1,0.3,1) both;
+  }
+
+  .auth-hero { animation: authFadeUp 0.6s 0.08s cubic-bezier(0.16,1,0.3,1) both; }
+
+  .auth-hero-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--accent);
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    margin-bottom: 18px;
+    opacity: 0.75;
+  }
+
+  .auth-hero-title {
+    font-size: clamp(30px, 2.8vw, 42px);
+    font-weight: 300;
+    color: var(--text-1);
+    letter-spacing: -1.5px;
+    line-height: 1.18;
+    margin-bottom: 20px;
+  }
+
+  .auth-hero-title strong { font-weight: 500; color: #fff; }
+
+  .auth-hero-sub {
+    font-size: 14px;
+    color: var(--text-2);
+    line-height: 1.75;
+    max-width: 320px;
+    font-weight: 300;
+  }
+
+  .auth-stats {
+    display: flex;
+    gap: 36px;
+    animation: authFadeUp 0.6s 0.18s cubic-bezier(0.16,1,0.3,1) both;
+  }
+
+  .auth-stat { display: flex; flex-direction: column; gap: 4px; }
+
+  .auth-stat-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--text-1);
+    letter-spacing: -0.5px;
+  }
+
+  .auth-stat-lbl { font-size: 11px; color: var(--text-2); font-weight: 300; }
+
+  /* Right panel */
+  .auth-right {
+    width: 420px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    background: var(--bg-panel);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .auth-form-panel {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 56px 48px;
+    transition: opacity 0.22s ease, transform 0.22s cubic-bezier(0.16,1,0.3,1);
+    overflow-y: auto;
+  }
+
+  .auth-form-panel.hidden {
+    opacity: 0;
+    transform: translateY(10px);
+    pointer-events: none;
+  }
+
+  .auth-form-heading {
+    font-size: 23px;
+    font-weight: 400;
+    color: var(--text-1);
+    letter-spacing: -0.7px;
     margin-bottom: 6px;
   }
 
-  .auth-subheading {
+  .auth-form-sub {
     font-size: 13px;
-    color: #6b7a99;
-    margin-bottom: 28px;
-    line-height: 1.5;
+    color: var(--text-2);
+    margin-bottom: 32px;
+    font-weight: 300;
   }
 
-  .auth-field {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    margin-bottom: 14px;
-  }
+  .auth-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
 
   .auth-field label {
-    font-size: 11px;
-    font-weight: 500;
-    color: #6b7a99;
-    letter-spacing: 0.3px;
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--text-2);
+    letter-spacing: 1.8px;
     text-transform: uppercase;
   }
 
   .auth-field input {
-    background: #1c2130;
-    border: 1px solid #2e3648;
-    border-radius: 7px;
-    padding: 0 12px;
-    height: 38px;
-    font-size: 13px;
-    font-family: 'Inter', sans-serif;
-    color: #e6eaf5;
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0 14px;
+    height: 42px;
+    font-size: 13.5px;
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text-1);
     outline: none;
-    transition: border-color 0.15s;
+    transition: border-color 0.15s, box-shadow 0.15s;
     width: 100%;
   }
 
-  .auth-field input:focus { border-color: #4a8fd4; }
-  .auth-field input::placeholder { color: #364050; }
+  .auth-field input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(59,111,212,0.12);
+  }
+
+  .auth-field input::placeholder { color: var(--text-3); }
+
+  .auth-strength-bars { display: flex; gap: 4px; margin-top: 6px; }
+  .auth-bar { flex: 1; height: 2px; border-radius: 2px; background: var(--border); transition: background 0.2s; }
+  .auth-bar.weak   { background: #7a2a2a; }
+  .auth-bar.medium { background: #7a5a1a; }
+  .auth-bar.strong { background: #2a6a4a; }
 
   .auth-error {
     background: #1a0e0e;
@@ -121,110 +267,66 @@ const authCss = `
     padding: 10px 12px;
     font-size: 12px;
     color: #f0a0a0;
-    margin-bottom: 16px;
+    margin-bottom: 14px;
     line-height: 1.5;
   }
 
-  .auth-btn {
+  .auth-submit-btn {
     width: 100%;
-    height: 38px;
-    background: #2a4a7a;
-    color: #c8daf4;
+    height: 42px;
+    background: var(--accent);
+    color: #fff;
     border: none;
-    border-radius: 7px;
-    font-size: 13px;
-    font-family: 'Inter', sans-serif;
-    font-weight: 600;
+    border-radius: 8px;
+    font-size: 13.5px;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 500;
     cursor: pointer;
-    transition: background 0.15s;
-    margin-top: 6px;
-    letter-spacing: -0.1px;
+    transition: background 0.15s, transform 0.1s;
+    margin-top: 8px;
   }
 
-  .auth-btn:hover    { background: #2e5488; }
-  .auth-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .auth-submit-btn:hover    { background: var(--accent-hi); }
+  .auth-submit-btn:active   { transform: scale(0.99); }
+  .auth-submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-  .auth-divider {
-    height: 1px;
-    background: #1e2432;
-    margin: 22px 0;
-  }
+  .auth-divider { display: flex; align-items: center; gap: 12px; margin: 22px 0; }
+  .auth-divider-line { flex: 1; height: 1px; background: var(--border); }
+  .auth-divider-text { font-size: 11px; color: var(--text-2); white-space: nowrap; font-weight: 300; }
 
-  .auth-switch {
-    font-size: 12.5px;
-    color: #6b7a99;
-    text-align: center;
-  }
+  .auth-switch { font-size: 13px; color: var(--text-2); text-align: center; font-weight: 300; }
 
   .auth-switch button {
     background: none;
     border: none;
-    color: #7aa4e0;
-    font-size: 12.5px;
-    font-family: 'Inter', sans-serif;
+    color: var(--accent-hi);
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 500;
     cursor: pointer;
     padding: 0;
-    font-weight: 500;
     transition: color 0.1s;
   }
 
-  .auth-switch button:hover { color: #93c5fd; }
+  .auth-switch button:hover { color: #6b9af8; }
 
-  .auth-password-wrap { position: relative; }
-  .auth-password-wrap input { padding-right: 40px; }
-  .auth-eye-btn {
-    position: absolute;
-    right: 10px;
-    top: 50%;
-    transform: translateY(-50%);
-    background: none;
-    border: none;
-    color: #6b7a99;
-    cursor: pointer;
-    padding: 4px;
-    display: flex;
-    align-items: center;
-    transition: color 0.1s;
-  }
-  .auth-eye-btn:hover { color: #e6eaf5; }
-
-  .auth-strength {
-    display: flex;
-    gap: 4px;
-    margin-top: 6px;
+  @keyframes authFadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
   }
 
-  .auth-strength-bar {
-    flex: 1;
-    height: 2px;
-    border-radius: 2px;
-    background: #2e3648;
-    transition: background 0.2s;
+  @media (max-width: 768px) {
+    .auth-left { display: none; }
+    .auth-right { width: 100%; min-height: 100vh; }
+    .auth-form-panel { position: relative; inset: auto; }
+    .auth-form-panel.hidden { display: none; opacity: 1; transform: none; }
   }
-
-  .auth-strength-bar.weak   { background: #9a4050; }
-  .auth-strength-bar.medium { background: #b45309; }
-  .auth-strength-bar.strong { background: #3a8a6a; }
 `;
-
-function EyeIcon({ open }) {
-  return open ? (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-      <circle cx="12" cy="12" r="3"/>
-    </svg>
-  ) : (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/>
-      <line x1="1" y1="1" x2="23" y2="23"/>
-    </svg>
-  );
-}
 
 function passwordStrength(pw) {
   if (!pw) return 0;
   let score = 0;
-  if (pw.length >= 8)  score++;
+  if (pw.length >= 8) score++;
   if (pw.length >= 12) score++;
   if (/[A-Z]/.test(pw) && /[a-z]/.test(pw)) score++;
   if (/[0-9]/.test(pw)) score++;
@@ -232,103 +334,70 @@ function passwordStrength(pw) {
   return Math.min(3, Math.ceil(score / 1.5));
 }
 
-// ── Login ─────────────────────────────────────────────────────────────────────
-export function LoginPage({ onSwitch }) {
-  const { signIn } = useAuth();
-  const [email,    setEmail]    = useState("");
-  const [password, setPassword] = useState("");
-  const [showPw,   setShowPw]   = useState(false);
-  const [error,    setError]    = useState("");
-  const [loading,  setLoading]  = useState(false);
+const LeftPanel = () => (
+  <div className="auth-left">
+    <div className="auth-orb1" />
+    <div className="auth-orb2" />
+    <div className="auth-orb3" />
+    <div className="auth-left-content">
+      <div className="auth-brand-name">Lease Tracker</div>
+      <div className="auth-hero">
+        <div className="auth-hero-label">Maturity Management</div>
+        <h1 className="auth-hero-title">
+          Stay ahead of<br />every <strong>lease maturity</strong>
+        </h1>
+        <p className="auth-hero-sub">
+          Track incentives, monitor mileage pace, and manage every customer's lease in one place.
+        </p>
+      </div>
+      <div className="auth-stats">
+        <div className="auth-stat">
+          <span className="auth-stat-num">100%</span>
+          <span className="auth-stat-lbl">Data retained</span>
+        </div>
+        <div className="auth-stat">
+          <span className="auth-stat-num">∞</span>
+          <span className="auth-stat-lbl">Customers</span>
+        </div>
+        <div className="auth-stat">
+          <span className="auth-stat-num">1</span>
+          <span className="auth-stat-lbl">Click to access</span>
+        </div>
+      </div>
+    </div>
+  </div>
+);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!email.trim() || !password) return;
+export function AuthPage() {
+  const { signIn, signUp } = useAuth();
+  const [view,      setView]      = useState("signin");
+  const [name,      setName]      = useState("");
+  const [email,     setEmail]     = useState("");
+  const [password,  setPassword]  = useState("");
+  const [confirm,   setConfirm]   = useState("");
+  const [error,     setError]     = useState("");
+  const [loading,   setLoading]   = useState(false);
+
+  const strength = passwordStrength(password);
+  const strengthClass = ["", "weak", "medium", "strong"][strength];
+
+  const switchView = (v) => {
+    setView(v);
     setError("");
+    setName(""); setEmail(""); setPassword(""); setConfirm("");
+  };
+
+  const handleSignIn = async (e) => {
+    e.preventDefault();
+    setError("");
+    if (!email || !password) return;
     setLoading(true);
     const result = await signIn(email.trim().toLowerCase(), password);
     setLoading(false);
     if (result.error) setError(result.error);
   };
 
-  return (
-    <>
-      <style>{authCss}</style>
-      <div className="auth-root">
-        <div className="auth-card">
-          <div className="auth-logo">
-            <div className="auth-logo-mark">VW</div>
-            <div>
-              <div className="auth-logo-text">Lease Tracker</div>
-              <div className="auth-logo-sub">Maturity Management</div>
-            </div>
-          </div>
-
-          <div className="auth-heading">Welcome back</div>
-          <div className="auth-subheading">Sign in to your account to continue</div>
-
-          {error && <div className="auth-error">{error}</div>}
-
-          <form onSubmit={handleSubmit}>
-            <div className="auth-field">
-              <label>Email</label>
-              <input
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                autoFocus
-                autoComplete="email"
-              />
-            </div>
-            <div className="auth-field">
-              <label>Password</label>
-              <div className="auth-password-wrap">
-                <input
-                  type={showPw ? "text" : "password"}
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  autoComplete="current-password"
-                />
-                <button type="button" className="auth-eye-btn" onClick={() => setShowPw(v => !v)}>
-                  <EyeIcon open={showPw} />
-                </button>
-              </div>
-            </div>
-
-            <button className="auth-btn" type="submit" disabled={loading || !email || !password}>
-              {loading ? "Signing in…" : "Sign In"}
-            </button>
-          </form>
-
-          <div className="auth-divider" />
-          <div className="auth-switch">
-            Don't have an account?{" "}
-            <button onClick={onSwitch}>Create one</button>
-          </div>
-        </div>
-      </div>
-    </>
-  );
-}
-
-// ── Sign Up ───────────────────────────────────────────────────────────────────
-export function SignUpPage({ onSwitch }) {
-  const { signUp } = useAuth();
-  const [name,     setName]     = useState("");
-  const [email,    setEmail]    = useState("");
-  const [password, setPassword] = useState("");
-  const [confirm,  setConfirm]  = useState("");
-  const [showPw,   setShowPw]   = useState(false);
-  const [error,    setError]    = useState("");
-  const [loading,  setLoading]  = useState(false);
-
-  const strength = passwordStrength(password);
-  const strengthLabel = ["", "Weak", "Fair", "Strong"][strength];
-  const strengthClass = ["", "weak", "medium", "strong"][strength];
-
-  const handleSubmit = async (e) => {
+  const handleSignUp = async (e) => {
     e.preventDefault();
     setError("");
     if (!name.trim())  return setError("Please enter your full name");
@@ -345,85 +414,80 @@ export function SignUpPage({ onSwitch }) {
     <>
       <style>{authCss}</style>
       <div className="auth-root">
-        <div className="auth-card">
-          <div className="auth-logo">
-            <div className="auth-logo-mark">VW</div>
-            <div>
-              <div className="auth-logo-text">Lease Tracker</div>
-              <div className="auth-logo-sub">Maturity Management</div>
-            </div>
-          </div>
+        <LeftPanel />
+        <div className="auth-right">
 
-          <div className="auth-heading">Create your account</div>
-          <div className="auth-subheading">Get started — it only takes a moment</div>
-
-          {error && <div className="auth-error">{error}</div>}
-
-          <form onSubmit={handleSubmit}>
-            <div className="auth-field">
-              <label>Full Name</label>
-              <input
-                type="text"
-                placeholder="Patryk Fusiarz"
-                value={name}
-                onChange={e => setName(e.target.value)}
-                autoFocus
-                autoComplete="name"
-              />
-            </div>
-            <div className="auth-field">
-              <label>Email</label>
-              <input
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                autoComplete="email"
-              />
-            </div>
-            <div className="auth-field">
-              <label>Password</label>
-              <div className="auth-password-wrap">
-                <input
-                  type={showPw ? "text" : "password"}
-                  placeholder="At least 6 characters"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  autoComplete="new-password"
-                />
-                <button type="button" className="auth-eye-btn" onClick={() => setShowPw(v => !v)}>
-                  <EyeIcon open={showPw} />
-                </button>
+          {/* Sign In */}
+          <div className={`auth-form-panel ${view !== "signin" ? "hidden" : ""}`}>
+            <div className="auth-form-heading">Welcome back</div>
+            <div className="auth-form-sub">Sign in to your account</div>
+            {error && view === "signin" && <div className="auth-error">{error}</div>}
+            <form onSubmit={handleSignIn}>
+              <div className="auth-field">
+                <label>Email</label>
+                <input type="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} autoFocus autoComplete="email" />
               </div>
-              {password && (
-                <div className="auth-strength">
-                  {[1,2,3].map(i => (
-                    <div key={i} className={`auth-strength-bar ${i <= strength ? strengthClass : ""}`} />
-                  ))}
-                </div>
-              )}
+              <div className="auth-field">
+                <label>Password</label>
+                <input type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" />
+              </div>
+              <button className="auth-submit-btn" type="submit" disabled={loading || !email || !password}>
+                {loading ? "Signing in…" : "Sign In"}
+              </button>
+            </form>
+            <div className="auth-divider">
+              <div className="auth-divider-line" />
+              <span className="auth-divider-text">no account yet?</span>
+              <div className="auth-divider-line" />
             </div>
-            <div className="auth-field">
-              <label>Confirm Password</label>
-              <input
-                type={showPw ? "text" : "password"}
-                placeholder="Same as above"
-                value={confirm}
-                onChange={e => setConfirm(e.target.value)}
-                autoComplete="new-password"
-              />
+            <div className="auth-switch">
+              <button onClick={() => switchView("signup")}>Create an account</button>
             </div>
-
-            <button className="auth-btn" type="submit" disabled={loading || !name || !email || !password || !confirm}>
-              {loading ? "Creating account…" : "Create Account"}
-            </button>
-          </form>
-
-          <div className="auth-divider" />
-          <div className="auth-switch">
-            Already have an account?{" "}
-            <button onClick={onSwitch}>Sign in</button>
           </div>
+
+          {/* Sign Up */}
+          <div className={`auth-form-panel ${view !== "signup" ? "hidden" : ""}`}>
+            <div className="auth-form-heading">Create account</div>
+            <div className="auth-form-sub">Get started in seconds</div>
+            {error && view === "signup" && <div className="auth-error">{error}</div>}
+            <form onSubmit={handleSignUp}>
+              <div className="auth-field">
+                <label>Full Name</label>
+                <input type="text" placeholder="Your name" value={name} onChange={e => setName(e.target.value)} autoFocus autoComplete="name" />
+              </div>
+              <div className="auth-field">
+                <label>Email</label>
+                <input type="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" />
+              </div>
+              <div className="auth-field">
+                <label>Password</label>
+                <input type="password" placeholder="At least 6 characters" value={password} onChange={e => setPassword(e.target.value)} autoComplete="new-password" />
+                {password && (
+                  <div className="auth-strength-bars">
+                    {[1,2,3].map(i => (
+                      <div key={i} className={`auth-bar ${i <= strength ? strengthClass : ""}`} />
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="auth-field">
+                <label>Confirm Password</label>
+                <input type="password" placeholder="Same as above" value={confirm} onChange={e => setConfirm(e.target.value)} autoComplete="new-password" />
+              </div>
+              <button className="auth-submit-btn" type="submit" disabled={loading || !name || !email || !password || !confirm}>
+                {loading ? "Creating account…" : "Create Account"}
+              </button>
+            </form>
+            <div className="auth-divider">
+              <div className="auth-divider-line" />
+              <span className="auth-divider-text">already have an account?</span>
+              <div className="auth-divider-line" />
+            </div>
+            <div className="auth-switch">
+              <button onClick={() => switchView("signin")}>Sign in</button>
+            </div>
+          </div>
+
         </div>
       </div>
     </>

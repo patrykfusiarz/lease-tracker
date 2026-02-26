@@ -1163,6 +1163,7 @@ export default function LeaseTracker() {
     setEditMode(false);
     setEditSaved(true);
     setTimeout(() => setEditSaved(false), 2000);
+    addToast(`${updates.name} saved`);
   }, [selected, editForm, snapCustomer]);
 
   // ── Add modal ──
@@ -1234,6 +1235,7 @@ export default function LeaseTracker() {
       closeModal();
       closePanel();
       setTimeout(() => openPanel(customer.id), 50);
+      addToast(`${customer.name} added`);
     }
   };
 
@@ -1241,10 +1243,12 @@ export default function LeaseTracker() {
 
   const confirmDelete = (id, e) => { e.stopPropagation(); setConfirmDel(id); };
   const executeDelete = async () => {
+    const delName = customers.find(x => x.id === confirmDel)?.name || "Customer";
     if (confirmDel === selected) closePanel();
     await supabase.from("customers").delete().eq("id", confirmDel);
     dispatch({ type: "DELETE_CUSTOMER", id: confirmDel });
     setConfirmDel(null);
+    addToast(`${delName} deleted`, "info");
   };
 
   // ── Sort ──
@@ -1537,6 +1541,7 @@ export default function LeaseTracker() {
                           onClick={async () => {
                           await supabase.from("customers").update({ status: s.key, updated_at: new Date().toISOString() }).eq("id", selected);
                           dispatch({ type: "SET_STATUS", id: selected, status: s.key });
+                          addToast(`Status → ${s.label}`);
                           setFlashingStatus(s.key);
                           setTimeout(() => setFlashingStatus(null), 350);
                         }}

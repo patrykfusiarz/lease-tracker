@@ -227,9 +227,14 @@ export function AuthPage() {
 
   const handleSignIn = async (e) => {
     e.preventDefault(); setError("");
-    if (!email || !password) return;
+    // Catch browser autofill which may not fire React onChange
+    const formEmail    = e.target.elements.email?.value    || email;
+    const formPassword = e.target.elements.password?.value || password;
+    if (!formEmail || !formPassword) return;
+    setEmail(formEmail);
+    setPassword(formPassword);
     setLoading(true);
-    const r = await signIn(email.trim().toLowerCase(), password, rememberMe);
+    const r = await signIn(formEmail.trim().toLowerCase(), formPassword, rememberMe);
     setLoading(false);
     if (r.error) setError(r.error);
   };
@@ -269,14 +274,14 @@ export function AuthPage() {
               <form onSubmit={handleSignIn}>
                 <div className="auth-field">
                   <label className="auth-field-label">Email</label>
-                  <input className="auth-input" type="email" value={email}
+                  <input className="auth-input" type="email" name="email" value={email}
                     onChange={e => setEmail(e.target.value)} autoFocus autoComplete="email" />
                 </div>
 
                 <div className="auth-field">
                   <label className="auth-field-label">Password</label>
                   <div className="auth-field-wrap">
-                    <input className="auth-input" type={showPw ? "text" : "password"}
+                    <input className="auth-input" type={showPw ? "text" : "password"} name="password"
                       value={password} onChange={e => setPassword(e.target.value)}
                       autoComplete="current-password" style={{ paddingRight: 32 }} />
                     <button type="button" className="auth-eye" onClick={() => setShowPw(v => !v)}>
@@ -291,7 +296,7 @@ export function AuthPage() {
                   Remember me
                 </label>
 
-                <button className="auth-btn-primary" type="submit" disabled={loading || !email || !password}>
+                <button className="auth-btn-primary" type="submit" disabled={loading}>
                   {loading ? "Signing in…" : "Log in"}
                 </button>
 

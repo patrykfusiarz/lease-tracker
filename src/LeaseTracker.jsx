@@ -51,8 +51,8 @@ function uid() { return crypto.randomUUID(); }
 
 // ── DMS paste parser ──────────────────────────────────────────────────────────
 function parseDMS(raw) {
-  // Normalize: collapse tabs and multiple spaces into single space, keep newlines
-  const text = raw.replace(/[ \t]+/g, " ").replace(/\r/g, "");
+  // Normalize: strip leading blank lines, collapse tabs/spaces, remove CR
+  const text = raw.replace(/^[\s\n\r]+/, "").replace(/[ \t]+/g, " ").replace(/\r/g, "");
   const get = (re) => { const m = text.match(re); return m ? m[1].trim() : ""; };
   const money = (s) => s ? s.replace(/[$,]/g, "").trim() : "";
 

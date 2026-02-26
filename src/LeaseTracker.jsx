@@ -56,9 +56,12 @@ function parseDMS(raw) {
   const get = (re) => { const m = text.match(re); return m ? m[1].trim() : ""; };
   const money = (s) => s ? s.replace(/[$,]/g, "").trim() : "";
 
-  // Name — first line, everything before first " - "
-  const firstLine = text.split("\n")[0] || "";
-  const name = firstLine.split(/\s*-\s*/)[0].trim();
+  // Name — first line, everything before first " - Purchase Information"
+  // Handles: "CHRISTINA BARILE   -  Purchase Information"
+  // Also handles leading whitespace
+  const firstLine = (text.split("\n")[0] || "").trim();
+  const nameMatch = firstLine.match(/^([A-Z][A-Z\s]+?)\s{1,}-/);
+  const name = nameMatch ? nameMatch[1].trim() : firstLine.split(/\s*-\s*/)[0].trim();
 
   // Vehicle — between "Vehicle Purchased:" and "VIN:"
   const vpMatch = text.match(/Vehicle Purchased:\s*([\s\S]+?)(?=VIN:)/);

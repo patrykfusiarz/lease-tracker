@@ -811,6 +811,21 @@ const css = `
   .modal-field select option { background: var(--bg-panel); color: var(--text-primary); }
   .modal-divider { height: 1px; background: var(--border-main); }
   .modal-footer { padding: 12px 18px; border-top: 1px solid var(--border-main); display: flex; justify-content: flex-end; gap: 8px; }
+
+  /* ── Toasts ── */
+  .toast-container { position: fixed; bottom: 24px; right: 24px; display: flex; flex-direction: column-reverse; gap: 8px; z-index: 9999; pointer-events: none; }
+  .toast { display: flex; align-items: center; gap: 10px; background: #111520; border: 1px solid #1e2a3a; border-radius: 9px; padding: 11px 14px; min-width: 220px; max-width: 320px; box-shadow: 0 4px 24px rgba(0,0,0,0.4); pointer-events: all; position: relative; overflow: hidden; animation: toastIn 0.22s cubic-bezier(0.16,1,0.3,1) both; }
+  .toast.leaving { animation: toastOut 0.18s ease-in forwards; }
+  .toast-icon { flex-shrink: 0; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; }
+  .toast-icon.success { background: rgba(42,106,74,0.3); color: #4ade80; }
+  .toast-icon.error   { background: rgba(122,42,42,0.3); color: #f87171; }
+  .toast-icon.info    { background: rgba(59,111,212,0.2); color: #60a5fa; }
+  .toast-icon.warning { background: rgba(122,90,26,0.3); color: #fbbf24; }
+  .toast-message { flex: 1; font-size: 12px; color: var(--text-primary); line-height: 1.4; letter-spacing: -0.1px; }
+  .toast-progress { position: absolute; bottom: 0; left: 0; height: 2px; background: #2a4a7a; border-radius: 0 0 0 9px; animation: toastProgress 3s linear forwards; }
+  @keyframes toastIn { from { opacity: 0; transform: translateX(16px) scale(0.96); } to { opacity: 1; transform: translateX(0) scale(1); } }
+  @keyframes toastOut { from { opacity: 1; transform: translateX(0) scale(1); } to { opacity: 0; transform: translateX(16px) scale(0.96); } }
+  @keyframes toastProgress { from { width: 100%; } to { width: 0%; } }
 `;
 
 // ── Animated Number ───────────────────────────────────────────────────────────

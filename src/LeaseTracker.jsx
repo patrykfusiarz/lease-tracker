@@ -1,6 +1,7 @@
 import { useReducer, useMemo, useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "./auth";
 import { SettingsModal } from "./SettingsModal";
+import { supabase } from "./supabase";
 import { Layers, LogOut, UserPlus, X, ChevronsUpDown, ChevronUp, ChevronDown, Pencil, Check, Trash2, Sun, Moon, ChevronLeft, ChevronRight, AlignJustify, Settings } from "lucide-react";
 
 // ── CONSTANTS ─────────────────────────────────────────────────────────────────
@@ -376,15 +377,13 @@ const SEED_CUSTOMERS = [
 // ── REDUCER ───────────────────────────────────────────────────────────────────
 
 function loadState() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch {}
   return { customers: [], notes: {} };
 }
 
 function reducer(state, action) {
   switch (action.type) {
+    case "LOAD_CUSTOMERS":  return { ...state, customers: action.customers };
+    case "LOAD_NOTES":      return { ...state, notes: action.notes };
     case "ADD_CUSTOMER":    return { ...state, customers: [...state.customers, { ...action.customer, updatedAt: new Date().toISOString() }] };
     case "UPDATE_CUSTOMER": return { ...state, customers: state.customers.map(c => c.id === action.id ? { ...c, ...action.updates, updatedAt: new Date().toISOString() } : c) };
     case "DELETE_CUSTOMER": return { ...state, customers: state.customers.filter(c => c.id !== action.id) };
@@ -781,6 +780,7 @@ export default function LeaseTracker() {
   const [showSettings, setShowSettings] = useState(false);
   const [state,   dispatch] = useReducer(reducer, null, loadState);
   const { customers, notes } = state;
+  const [dbLoading, setDbLoading] = useState(true);
 
   // Panel state — "closed" | "open" | "closing"
   const [panelState,    setPanelState]    = useState("closed");
@@ -830,22 +830,68 @@ export default function LeaseTracker() {
   const closeTimer   = useRef(null);
   const persistTimer = useRef(null);
 
-  // ── Persist ──
-
+  // ── Load from Supabase on mount ──
   useEffect(() => {
-    clearTimeout(persistTimer.current);
-    persistTimer.current = setTimeout(() => {
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
-    }, 300);
-    return () => clearTimeout(persistTimer.current);
-  }, [state]);
+    if (!user) return;
+    async function loadFromSupabase() {
+      setDbLoading(true);
+      // Load customers
+      const { data: custData } = await supabase
+        .from("customers")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: true });
 
-  // Persist sort + filter prefs
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY + "-prefs", JSON.stringify({ sortKey, sortDir, statFilter }));
-    } catch {}
-  }, [sortKey, sortDir, statFilter]);
+      // Load notes
+      const { data: notesData } = await supabase
+        .from("notes")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (custData) {
+        // Convert snake_case DB fields to camelCase app fields
+        const mapped = custData.map(c => ({
+          id:               c.id,
+          name:             c.name,
+          year:             c.year,
+          model:            c.model || "—",
+          trim:             c.trim  || "—",
+          bank:             c.bank  || "—",
+          term:             c.term,
+          milesYearly:      c.miles_yearly,
+          milesTerm:        c.miles_term,
+          currentMiles:     c.current_miles,
+          monthlyPayment:   c.monthly_payment,
+          downPayment:      c.down_payment,
+          tradeEquity:      c.trade_equity,
+          leaseEnd:         c.lease_end || "—",
+          privateIncentive: c.private_incentive,
+          incentiveExp:     c.incentive_exp || "—",
+          status:           c.status || "early",
+          updatedAt:        c.updated_at,
+        }));
+        dispatch({ type: "LOAD_CUSTOMERS", customers: mapped });
+      }
+
+      if (notesData) {
+        // Group notes by customer_id
+        const grouped = {};
+        notesData.forEach(n => {
+          if (!grouped[n.customer_id]) grouped[n.customer_id] = [];
+          grouped[n.customer_id].push({ id: n.id, text: n.text, savedAt: n.saved_at });
+        });
+        const notesMap = {};
+        Object.entries(grouped).forEach(([custId, entries]) => {
+          notesMap[custId] = { history: entries };
+        });
+        dispatch({ type: "LOAD_NOTES", notes: notesMap });
+      }
+
+      setDbLoading(false);
+    }
+    loadFromSupabase();
+  }, [user]);
 
   // ── Keep snapshot fresh while panel is open ──
 
@@ -900,15 +946,24 @@ export default function LeaseTracker() {
     setNotesOpen(true);
   }, []);
 
-  const saveNote = useCallback(() => {
+  const saveNote = useCallback(async () => {
     if (!selected || !noteDraft.trim()) return;
     const now = new Date();
     const savedAt = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) + " · " + now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-    dispatch({ type: "SAVE_NOTE", id: selected, text: noteDraft.trim(), savedAt, entryId: uid() });
+    const entryId = uid();
+    // Write to Supabase
+    await supabase.from("notes").insert({
+      id:          entryId,
+      customer_id: selected,
+      user_id:     user.id,
+      text:        noteDraft.trim(),
+      saved_at:    savedAt,
+    });
+    dispatch({ type: "SAVE_NOTE", id: selected, text: noteDraft.trim(), savedAt, entryId });
     setNoteDraft("");
     setNoteSaved(true);
     setTimeout(() => setNoteSaved(false), 2000);
-  }, [selected, noteDraft]);
+  }, [selected, noteDraft, user]);
 
   // ── Edit ──
 
@@ -933,12 +988,12 @@ export default function LeaseTracker() {
     setEditMode(true);
   }, []);
 
-  const saveEdit = useCallback(() => {
+  const saveEdit = useCallback(async () => {
     if (!selected) return;
     const form      = normalizeForm(editForm);
     const leaseEnd  = form.leaseEnd;
     const incentiveExp = form.incentiveExp;
-    dispatch({ type: "UPDATE_CUSTOMER", id: selected, updates: {
+    const updates = {
       name:                editForm.name?.trim()  || snapCustomer?.name,
       year:                form.year,
       model:               editForm.model?.trim() || "—",
@@ -954,7 +1009,27 @@ export default function LeaseTracker() {
       leaseEnd,
       privateIncentive:    form.privateIncentive,
       incentiveExp,
-    }});
+    };
+    // Write to Supabase
+    await supabase.from("customers").update({
+      name:             updates.name,
+      year:             updates.year,
+      model:            updates.model === "—" ? null : updates.model,
+      trim:             updates.trim  === "—" ? null : updates.trim,
+      bank:             updates.bank  === "—" ? null : updates.bank,
+      term:             updates.term,
+      miles_yearly:     updates.milesYearly,
+      miles_term:       updates.milesTerm,
+      current_miles:    updates.currentMiles,
+      monthly_payment:  updates.monthlyPayment,
+      down_payment:     updates.downPayment,
+      trade_equity:     updates.tradeEquity,
+      lease_end:        updates.leaseEnd === "—" ? null : updates.leaseEnd,
+      private_incentive: updates.privateIncentive,
+      incentive_exp:    updates.incentiveExp === "—" ? null : updates.incentiveExp,
+      updated_at:       new Date().toISOString(),
+    }).eq("id", selected);
+    dispatch({ type: "UPDATE_CUSTOMER", id: selected, updates });
     setEditMode(false);
     setEditSaved(true);
     setTimeout(() => setEditSaved(false), 2000);
@@ -970,19 +1045,43 @@ export default function LeaseTracker() {
     return customers.some(c => c.name.trim().toLowerCase() === form.name.trim().toLowerCase());
   }, [form.name, customers]);
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     const customer = buildCustomer(form);
-    dispatch({ type: "ADD_CUSTOMER", customer });
-    closeModal();
-    closePanel();
-    setTimeout(() => openPanel(customer.id), 50);
+    // Write to Supabase
+    const { error } = await supabase.from("customers").insert({
+      id:               customer.id,
+      user_id:          user.id,
+      name:             customer.name,
+      year:             customer.year,
+      model:            customer.model === "—" ? null : customer.model,
+      trim:             customer.trim  === "—" ? null : customer.trim,
+      bank:             customer.bank  === "—" ? null : customer.bank,
+      term:             customer.term,
+      miles_yearly:     customer.milesYearly,
+      miles_term:       customer.milesTerm,
+      current_miles:    customer.currentMiles,
+      monthly_payment:  customer.monthlyPayment,
+      down_payment:     customer.downPayment,
+      trade_equity:     customer.tradeEquity,
+      lease_end:        customer.leaseEnd === "—" ? null : customer.leaseEnd,
+      private_incentive: customer.privateIncentive,
+      incentive_exp:    customer.incentiveExp === "—" ? null : customer.incentiveExp,
+      status:           customer.status,
+    });
+    if (!error) {
+      dispatch({ type: "ADD_CUSTOMER", customer });
+      closeModal();
+      closePanel();
+      setTimeout(() => openPanel(customer.id), 50);
+    }
   };
 
   // ── Delete ──
 
   const confirmDelete = (id, e) => { e.stopPropagation(); setConfirmDel(id); };
-  const executeDelete = () => {
+  const executeDelete = async () => {
     if (confirmDel === selected) closePanel();
+    await supabase.from("customers").delete().eq("id", confirmDel);
     dispatch({ type: "DELETE_CUSTOMER", id: confirmDel });
     setConfirmDel(null);
   };
@@ -1039,6 +1138,13 @@ export default function LeaseTracker() {
   const c = snapCustomer;
 
   // ── Render ──
+
+  if (dbLoading) return (
+    <div style={{ minHeight:"100vh", background:"#0e1117", display:"flex", alignItems:"center", justifyContent:"center" }}>
+      <div style={{ width:28, height:28, border:"2px solid #1e2432", borderTopColor:"#4a8fd4", borderRadius:"50%", animation:"spin 0.7s linear infinite" }} />
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
 
   return (
     <>
@@ -1267,7 +1373,12 @@ export default function LeaseTracker() {
                           key={s.key}
                           className={`status-option ${active ? "active" : ""} ${flashingStatus === s.key ? "flashing" : ""}`}
                           style={active ? { background: s.color, borderColor: s.color } : {}}
-                          onClick={() => { dispatch({ type: "SET_STATUS", id: selected, status: s.key }); setFlashingStatus(s.key); setTimeout(() => setFlashingStatus(null), 350); }}
+                          onClick={async () => {
+                          await supabase.from("customers").update({ status: s.key, updated_at: new Date().toISOString() }).eq("id", selected);
+                          dispatch({ type: "SET_STATUS", id: selected, status: s.key });
+                          setFlashingStatus(s.key);
+                          setTimeout(() => setFlashingStatus(null), 350);
+                        }}
                         >
                           <span className="status-dot" style={{ background: active ? (isDayMode ? "#ffffff" : "#0c0c0e") : s.color }} />
                           {s.label}
@@ -1449,7 +1560,10 @@ export default function LeaseTracker() {
                                     <button
                                       className="note-entry-delete"
                                       title="Delete note"
-                                      onClick={() => dispatch({ type: "DELETE_NOTE_ENTRY", id: selected, entryId: entry.id })}
+                                      onClick={async () => {
+                                      await supabase.from("notes").delete().eq("id", entry.id);
+                                      dispatch({ type: "DELETE_NOTE_ENTRY", id: selected, entryId: entry.id });
+                                    }}
                                     >
                                       <X size={10} strokeWidth={2} />
                                     </button>

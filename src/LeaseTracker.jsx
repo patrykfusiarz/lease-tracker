@@ -49,6 +49,69 @@ const EMPTY_FORM = {
 
 function uid() { return crypto.randomUUID(); }
 
+// ── DMS paste parser ──────────────────────────────────────────────────────────
+function parseDMS(raw) {
+  const text = raw;
+  const get = (re) => { const m = text.match(re); return m ? m[1].trim() : ""; };
+  const money = (s) => s ? s.replace(/[$,]/g, "").trim() : "";
+
+  // Name
+  const firstLine = text.split("\n")[0] || "";
+  const name = firstLine.split(/\s+-\s+/)[0].trim();
+
+  // Vehicle
+  const vpMatch = text.match(/Vehicle Purchased:\s*(.+?)VIN:/s);
+  const vehicleRaw = vpMatch ? vpMatch[1].replace(/\s+/g, " ").trim() : "";
+  const yearMatch = vehicleRaw.match(/(20\d{2}|19\d{2})/);
+  const year = yearMatch ? yearMatch[1] : "";
+  const MODELS = ["Golf R","GTI","GLI","Tiguan","Atlas Cross Sport","Atlas","Taos","Jetta","Arteon","ID.4","ID.Buzz"];
+  let model = "";
+  for (const m of MODELS) { if (vehicleRaw.toLowerCase().includes(m.toLowerCase())) { model = m; break; } }
+
+  // VIN
+  const vin = get(/VIN:\s*([A-HJ-NPR-Z0-9]{17})/i);
+
+  // Odometer
+  const milMatch = text.match(/Mileage[:\s]+(\d+)/i);
+  const currentMiles = milMatch ? milMatch[1] : "";
+
+  // Lease terms
+  const term = get(/\bTerm:\s*(\d+)/);
+  const myRaw = get(/Total Lease Mileage[:\s]+(\d[\d,]*)/i);
+  const milesYearly = myRaw.replace(/,/g, "");
+  const milesTerm = (milesYearly && term)
+    ? String(Math.round((parseInt(milesYearly) / 12) * parseInt(term))) : "";
+
+  // Financials
+  const monthlyPayment = money(get(/Monthly Payment:\s*\$?([\d,]+\.?\d*)/));
+  const downPayment    = money(get(/Down Payment:\s*\$?([\d,]+\.?\d*)/));
+
+  // Trade equity
+  const allowance = parseFloat(money(get(/Total Trade Allowance:\s*\$?([\d,]+\.?\d*)/))||"0") || 0;
+  const payoff    = parseFloat(money(get(/Total Trade Payoff:\s*\$?([\d,]+\.?\d*)/))||"0")    || 0;
+  const tradeEquity = allowance > 0 ? String((allowance - payoff).toFixed(2)) : "";
+
+  // Lease end
+  const leaseEndRaw = get(/End of Term Date:\s*([\d/]+)/);
+  let leaseEnd = "";
+  if (leaseEndRaw) {
+    try {
+      const d = new Date(leaseEndRaw);
+      if (!isNaN(d)) leaseEnd = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    } catch { leaseEnd = leaseEndRaw; }
+  }
+
+  // Bank
+  const bankRaw = get(/Financed Through:\s*([^\n\r]+)/);
+  const BANKS = { "VCIL": "VW Credit", "VW CREDIT": "VW Credit", "ALLY": "Ally", "AFFINITY": "Affinity", "CAL": "Cal", "CASH": "" };
+  const bank = BANKS[(bankRaw||"").trim().toUpperCase()] ?? bankRaw;
+
+  const isLease = /Lease Turn-in/i.test(text);
+  return { name, year, model, vin, term, milesYearly, milesTerm, currentMiles, monthlyPayment, downPayment, tradeEquity, leaseEnd, bank, isLease };
+}
+
+
+
 function smartParseDate(str) {
   if (!str || str === "—") return null;
   const s = str.trim();
@@ -803,6 +866,9 @@ export default function LeaseTracker() {
 
   const [showModal, setShowModal] = useState(false);
   const [form,      setForm]      = useState(EMPTY_FORM);
+  const [modalTab,    setModalTab]    = useState("manual");
+  const [importText,  setImportText]  = useState("");
+  const [importError, setImportError] = useState("");
 
   const [confirmDel, setConfirmDel] = useState(null);
   const [isDayMode,  setIsDayMode]  = useState(false);
@@ -1037,13 +1103,44 @@ export default function LeaseTracker() {
 
   // ── Add modal ──
 
-  const openModal  = () => { setForm(EMPTY_FORM); setShowModal(true); };
-  const closeModal = () => { setShowModal(false); setForm(EMPTY_FORM); };
+  const openModal  = () => { setForm(EMPTY_FORM); setShowModal(true); setModalTab("manual"); setImportText(""); setImportError(""); };
+  const closeModal = () => { setShowModal(false); setForm(EMPTY_FORM); setModalTab("manual"); setImportText(""); setImportError(""); };
 
   const isDuplicate = useMemo(() => {
     if (!form.name.trim()) return false;
     return customers.some(c => c.name.trim().toLowerCase() === form.name.trim().toLowerCase());
   }, [form.name, customers]);
+
+  const handleParse = () => {
+    setImportError("");
+    if (!importText.trim()) return setImportError("Paste your DMS text first.");
+    const parsed = parseDMS(importText);
+    if (!parsed.isLease) return setImportError("This doesn't look like a lease — Lease/Purchase field may say 'Purchased' or 'Cash'. Only lease turn-ins can be imported.");
+    if (!parsed.name)    return setImportError("Could not read customer name. Make sure you copied the full page.");
+    // Map parsed values to form — keep selects compatible
+    const milesYearlyFormatted = parsed.milesYearly
+      ? Number(parsed.milesYearly).toLocaleString()
+      : "";
+    setForm({
+      name:             parsed.name,
+      year:             parsed.year,
+      model:            parsed.model,
+      trim:             "",
+      bank:             parsed.bank,
+      term:             parsed.term,
+      milesYearly:      milesYearlyFormatted,
+      milesTerm:        parsed.milesTerm ? Number(parsed.milesTerm).toLocaleString() : "",
+      currentMiles:     parsed.currentMiles,
+      monthlyPayment:   parsed.monthlyPayment,
+      downPayment:      parsed.downPayment,
+      tradeEquity:      parsed.tradeEquity,
+      leaseEnd:         parsed.leaseEnd,
+      privateIncentive: "",
+      incentiveExp:     "",
+    });
+    setModalTab("manual");
+    setImportText("");
+  };
 
   const handleAdd = async () => {
     const customer = buildCustomer(form);
@@ -1591,22 +1688,47 @@ export default function LeaseTracker() {
           <div className="modal-overlay" onClick={closeModal}>
             <div className="modal" onClick={e => e.stopPropagation()}>
               <div className="modal-topbar">
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <input
-                    className="modal-name-input"
-                    placeholder="Full name..."
-                    value={form.name}
-                    autoFocus
-                    onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
-                    onKeyDown={e => {
-                      if (e.key === "Escape") closeModal();
-                      if (e.key === "Enter") handleAdd();
-                    }}
-                  />
+                <div style={{ display:"flex", alignItems:"center", gap:0, background:"var(--bg-input,#1c2130)", borderRadius:7, padding:2, border:"1px solid var(--border-subtle,#252d3e)" }}>
+                  {[["manual","✏ Manual"],["import","⬆ Import DMS"]].map(([tab, label]) => (
+                    <button key={tab} onClick={() => { setModalTab(tab); setImportError(""); }}
+                      style={{ padding:"4px 12px", borderRadius:5, border:"none", fontSize:11, fontFamily:"inherit", fontWeight:500, cursor:"pointer", transition:"all 0.12s",
+                        background: modalTab === tab ? (isDayMode ? "#2a4a7a" : "#2a4a7a") : "transparent",
+                        color: modalTab === tab ? "#c8daf4" : "var(--text-secondary)" }}>
+                      {label}
+                    </button>
+                  ))}
                 </div>
-                <button className="modal-close" onClick={closeModal} style={{ alignSelf: "flex-start", marginTop: 2 }}><X size={14} strokeWidth={2} /></button>
+                <button className="modal-close" onClick={closeModal}><X size={14} strokeWidth={2} /></button>
               </div>
-              <div className="modal-body">
+              {/* ── Import tab ── */}
+              {modalTab === "import" && (
+                <div className="modal-body" style={{ display:"flex", flexDirection:"column", gap:12 }}>
+                  <p style={{ fontSize:12, color:"var(--text-secondary)", lineHeight:1.6 }}>
+                    Open your customer's purchase info page in your DMS, press <strong style={{color:"var(--text-primary)"}}>Cmd+A</strong> then <strong style={{color:"var(--text-primary)"}}>Cmd+C</strong> to copy everything, then paste below.
+                  </p>
+                  <textarea
+                    autoFocus
+                    placeholder="Paste DMS text here..."
+                    value={importText}
+                    onChange={e => { setImportText(e.target.value); setImportError(""); }}
+                    style={{ width:"100%", height:180, background:"var(--bg-input,#1c2130)", border:"1px solid var(--border-subtle,#252d3e)", borderRadius:7, padding:"10px 12px", fontSize:12, fontFamily:"inherit", color:"var(--text-primary)", resize:"none", outline:"none", lineHeight:1.5 }}
+                  />
+                  {importError && (
+                    <div style={{ fontSize:11.5, color:"#f0a0a0", background:"#1a0e0e", border:"1px solid #3a1a1a", borderRadius:6, padding:"8px 12px", lineHeight:1.5 }}>
+                      ⚠ {importError}
+                    </div>
+                  )}
+                  <div style={{ display:"flex", justifyContent:"flex-end", gap:8 }}>
+                    <button className="btn-secondary" onClick={closeModal}>Cancel</button>
+                    <button className="btn-primary" onClick={handleParse} disabled={!importText.trim()}>
+                      Parse & Fill Form
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Manual tab ── */}
+              {modalTab === "manual" && <div className="modal-body">
                 {/* Row 1 — Vehicle */}
                 <div className="modal-row cols-3">
                   <div className="modal-field">
@@ -1723,8 +1845,8 @@ export default function LeaseTracker() {
                     <input placeholder="28,400" value={form.currentMiles ?? ""} onChange={e => setForm(p => ({ ...p, currentMiles: e.target.value }))} onKeyDown={e => { if (e.key === "Escape") closeModal(); }} />
                   </div>
                 </div>
-              </div>
-              <div className="modal-footer">
+              </div>}
+              {modalTab === "manual" && <div className="modal-footer">
                 {isDuplicate && (
                   <span style={{ fontSize: 11, color: isDayMode ? "#b45309" : "#f59e0b", flex: 1, display: "flex", alignItems: "center", gap: 5 }}>
                     ⚠ A customer named "{form.name.trim()}" already exists
@@ -1732,7 +1854,7 @@ export default function LeaseTracker() {
                 )}
                 <button className="btn-secondary" onClick={closeModal}>Cancel</button>
                 <button className="btn-primary" onClick={handleAdd}>Add Customer</button>
-              </div>
+              </div>}
             </div>
           </div>
         )}

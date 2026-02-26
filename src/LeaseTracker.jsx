@@ -51,49 +51,49 @@ function uid() { return crypto.randomUUID(); }
 
 // ── DMS paste parser ──────────────────────────────────────────────────────────
 function parseDMS(raw) {
-  // Normalize: strip leading blank lines, collapse tabs/spaces, remove CR
-  const text = raw.replace(/^[\s\n\r]+/, "").replace(/[ \t]+/g, " ").replace(/\r/g, "");
-  const get = (re) => { const m = text.match(re); return m ? m[1].trim() : ""; };
-  const money = (s) => s ? s.replace(/[$,]/g, "").trim() : "";
+  // Normalize: remove CR, tabs to spaces, collapse multiple spaces, trim each line
+  const normalized = raw.replace(/\r/g, "").replace(/\t/g, " ").replace(/ +/g, " ");
+  const lines = normalized.split("\n").map(l => l.trim()).filter(l => l.length > 0);
+  const full  = lines.join("\n");
 
-  // Name — scan ALL lines for the one containing "Purchase Information"
-  // This is immune to leading blank lines, spaces, or any other junk at the top
-  const lines = text.split("\n");
+  const get = (re) => { const m = full.match(re); return m ? m[1].trim() : ""; };
+  const num = (s)  => s ? s.replace(/[$,\s]/g, "") : "";
+
+  // Name: find line containing "Purchase Information", take everything before first "-"
   const nameLine = lines.find(l => /Purchase Information/i.test(l)) || "";
-  const nameMatch = nameLine.match(/([A-Z][A-Z\s]+?)\s*-\s*Purchase Information/i);
-  const name = nameMatch ? nameMatch[1].trim() : "";
+  const name = nameLine.split(/\s*-\s*/)[0].trim();
 
-  // Vehicle — between "Vehicle Purchased:" and "VIN:"
-  const vpMatch = text.match(/Vehicle Purchased:\s*([\s\S]+?)(?=VIN:)/);
-  const vehicleRaw = vpMatch ? vpMatch[1].replace(/\s+/g, " ").trim() : "";
-  const yearMatch = vehicleRaw.match(/(20\d{2}|19\d{2})/);
-  const year = yearMatch ? yearMatch[1] : "";
-  const MODELS = ["Golf R","GTI","GLI","Tiguan","Atlas Cross Sport","Atlas","Taos","Jetta","Arteon","ID.4","ID.Buzz"];
+  // Vehicle: text between "Vehicle Purchased:" and "VIN:"
+  const vpM = full.match(/Vehicle Purchased:\s*(.+?)(?:VIN:|$)/m);
+  const vehicleRaw = vpM ? vpM[1].replace(/\s+/g, " ").trim() : "";
+  const year = (vehicleRaw.match(/(20\d{2}|19\d{2})/) || [])[1] || "";
+  const MODELS = ["Golf R","GTI","GLI","Atlas Cross Sport","Atlas","Tiguan","Taos","Jetta","Arteon","ID.4","ID.Buzz"];
   let model = "";
   for (const m of MODELS) { if (vehicleRaw.toLowerCase().includes(m.toLowerCase())) { model = m; break; } }
 
-  // VIN — first 17-char VIN (the purchased vehicle, not the trade)
-  const vinMatch = text.match(/VIN:\s*([A-HJ-NPR-Z0-9]{17})/i);
-  const vin = vinMatch ? vinMatch[1] : "";
+  // VIN: first 17-char VIN after "VIN:"
+  const vin = get(/VIN:\s*([A-HJ-NPR-Z0-9]{17})/i);
 
-  // Odometer — Mileage on the purchased vehicle (first occurrence, skip trade mileage)
-  const milMatch = text.match(/Mileage:\s*(\d+)/i);
-  const currentMiles = milMatch ? milMatch[1] : "";
+  // Odometer: first "Mileage: <number>" line
+  const milM = full.match(/(?:^|\n)Mileage:\s*(\d+)/i);
+  const currentMiles = milM ? milM[1] : "";
 
-  // Lease terms
+  // Term
   const term = get(/Term:\s*(\d+)/);
-  const myRaw = get(/Total Lease Mileage:\s*(\d[\d,]*)/i);
-  const milesYearly = myRaw.replace(/,/g, "");
+
+  // Miles/year
+  const milesYearly = num(get(/Total Lease Mileage:\s*(\d[\d,]*)/i));
   const milesTerm = (milesYearly && term)
     ? String(Math.round((parseInt(milesYearly) / 12) * parseInt(term))) : "";
 
   // Financials
-  const monthlyPayment = money(get(/Monthly Payment:\s*\$?([\d,]+\.?\d*)/));
-  const downPayment    = money(get(/Down Payment:\s*\$?([\d,]+\.?\d*)/));
+  const monthlyPayment = num(get(/Monthly Payment:\s*\$?([\d,]+\.?\d*)/));
+  const dpRaw = num(get(/Down Payment:\s*\$?([\d,]+\.?\d*)/));
+  const downPayment = (dpRaw === "0.00" || dpRaw === "0") ? "" : dpRaw;
 
-  // Trade equity = Total Trade Allowance - Total Trade Payoff
-  const allowance = parseFloat(money(get(/Total Trade Allowance:\s*\$?([\d,]+\.?\d*)/))||"0") || 0;
-  const payoff    = parseFloat(money(get(/Total Trade Payoff:\s*\$?([\d,]+\.?\d*)/))||"0")    || 0;
+  // Trade equity
+  const allowance = parseFloat(num(get(/Total Trade Allowance:\s*\$?([\d,]+\.?\d*)/))) || 0;
+  const payoff    = parseFloat(num(get(/Total Trade Payoff:\s*\$?([\d,]+\.?\d*)/)))    || 0;
   const tradeEquity = allowance > 0 ? String((allowance - payoff).toFixed(2)) : "";
 
   // Lease end
@@ -102,19 +102,20 @@ function parseDMS(raw) {
   if (leaseEndRaw) {
     try {
       const d = new Date(leaseEndRaw);
-      if (!isNaN(d)) leaseEnd = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+      if (!isNaN(d)) leaseEnd = d.toLocaleDateString("en-US", { month:"short", day:"numeric", year:"numeric" });
     } catch { leaseEnd = leaseEndRaw; }
   }
 
-  // Bank
-  const bankRaw = get(/Financed Through:\s*([A-Za-z0-9 ]+?)(?=Back Gross|$|\n)/);
-  const BANKS = { "VCIL": "VW Credit", "VW CREDIT": "VW Credit", "ALLY": "Ally", "AFFINITY": "Affinity", "CAL": "Cal", "CASH": "" };
-  const bank = BANKS[(bankRaw||"").trim().toUpperCase()] ?? bankRaw;
+  // Bank: stop at next CamelCase field (e.g. "Back Gross", "Dealer Profit")
+  const bankRaw = get(/Financed Through:\s*([A-Za-z0-9 ]+?)(?=[A-Z][a-z]+ [A-Z]|\n|$)/);
+  const BANKS = { "VCIL":"VW Credit","VW CREDIT":"VW Credit","ALLY":"Ally","AFFINITY":"Affinity","CAL":"Cal","CASH":"" };
+  const bank = BANKS[(bankRaw||"").trim().toUpperCase()] ?? bankRaw.trim();
 
-  const isLease = /Lease Turn-in/i.test(text);
-  return { name, year, model, vin, term, milesYearly, milesTerm, currentMiles, monthlyPayment, downPayment, tradeEquity, leaseEnd, bank, isLease };
+  const isLease = /Lease Turn-in/i.test(full);
+
+  return { name, year, model, vin, term, milesYearly, milesTerm, currentMiles,
+           monthlyPayment, downPayment, tradeEquity, leaseEnd, bank, isLease };
 }
-
 
 
 function smartParseDate(str) {

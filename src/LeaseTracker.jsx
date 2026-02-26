@@ -1093,7 +1093,7 @@ export default function LeaseTracker() {
     setNoteSaved(true);
     addToast("Note saved");
     setTimeout(() => setNoteSaved(false), 2000);
-  }, [selected, noteDraft, user]);
+  }, [selected, noteDraft, user, addToast]);
 
   // ── Edit ──
 
@@ -1164,7 +1164,7 @@ export default function LeaseTracker() {
     setEditSaved(true);
     setTimeout(() => setEditSaved(false), 2000);
     addToast(`${updates.name} saved`);
-  }, [selected, editForm, snapCustomer]);
+  }, [selected, editForm, snapCustomer, addToast]);
 
   // ── Add modal ──
 

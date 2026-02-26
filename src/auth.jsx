@@ -48,10 +48,19 @@ export function AuthProvider({ children }) {
   }, [user, resetTimer, clearTimer]);
 
   // ── Clear session on tab close if remember me is off ────────────────────
+  // NOTE: async signOut() never completes in beforeunload — the tab closes first.
+  // Instead we mark a "clear on next load" flag synchronously, then wipe the
+  // Supabase session on the *next* page load before getSession() is called.
   useEffect(() => {
+    const PENDING_CLEAR_KEY = "lt_pending_clear";
+    // On mount: if a previous tab set the pending-clear flag, sign out now
+    if (localStorage.getItem(PENDING_CLEAR_KEY) === "1") {
+      localStorage.removeItem(PENDING_CLEAR_KEY);
+      supabase.auth.signOut();
+    }
     const handleUnload = () => {
       if (localStorage.getItem(REMEMBER_KEY) !== "1") {
-        supabase.auth.signOut();
+        localStorage.setItem(PENDING_CLEAR_KEY, "1");
       }
     };
     window.addEventListener("beforeunload", handleUnload);
@@ -162,6 +171,14 @@ export function AuthProvider({ children }) {
     return { avatarUrl };
   };
 
+  const resetPassword = async (email) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin,
+    });
+    if (error) return { error: error.message };
+    return {};
+  };
+
   const removeAvatar = async () => {
     const { data, error } = await supabase.auth.updateUser({
       data: { name: user.name, avatar_url: null },
@@ -173,7 +190,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, timedOut, signIn, signUp, signOut, updateProfile, updateAvatar, removeAvatar }}>
+    <AuthContext.Provider value={{ user, loading, timedOut, signIn, signUp, signOut, updateProfile, updateAvatar, removeAvatar, resetPassword }}>
       {children}
     </AuthContext.Provider>
   );

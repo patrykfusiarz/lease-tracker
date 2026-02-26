@@ -2,8 +2,6 @@ import { useState, useRef } from "react";
 import { useAuth } from "./auth";
 
 const settingsCss = `
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-
   .settings-overlay {
     position: fixed; inset: 0;
     background: rgba(17,24,39,0.2);
@@ -136,6 +134,12 @@ const settingsCss = `
 
   /* ── Avatar row ── */
   .settings-avatar-row { display: flex; align-items: center; gap: 14px; padding: 4px 0 8px; }
+  .avatar-overlay { position: absolute; inset: 0; border-radius: 10px; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.15s; }
+  .avatar-upload-wrap:hover .avatar-overlay { opacity: 1; }
+  .avatar-action-btn { font-size: 11px; color: var(--text-secondary, #6b7280); background: none; border: none; cursor: pointer; padding: 0; font-family: inherit; transition: color 0.1s; }
+  .avatar-action-btn:hover { color: var(--text-primary, #111827); }
+  .avatar-action-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .avatar-action-btn.danger:hover { color: #dc2626; }
 
   .settings-avatar {
     width: 46px; height: 46px; background: #1d1d35; border-radius: 10px;
@@ -312,6 +316,7 @@ export function SettingsModal({ onClose }) {
                   />
                   {/* Avatar with click-to-upload overlay */}
                   <div
+                    className="avatar-upload-wrap"
                     onClick={() => !avatarUploading && fileInputRef.current?.click()}
                     style={{ position: "relative", width: 46, height: 46, flexShrink: 0, cursor: avatarUploading ? "wait" : "pointer" }}
                     title="Click to change photo"
@@ -324,16 +329,9 @@ export function SettingsModal({ onClose }) {
                           : getInitials(user?.name)
                       }
                     </div>
-                    {/* Hover overlay */}
+                    {/* Hover overlay — CSS class handles the opacity transition */}
                     {!avatarUploading && (
-                      <div style={{
-                        position: "absolute", inset: 0, borderRadius: 10,
-                        background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center",
-                        opacity: 0, transition: "opacity 0.15s",
-                      }}
-                      onMouseEnter={e => e.currentTarget.style.opacity = 1}
-                      onMouseLeave={e => e.currentTarget.style.opacity = 0}
-                      >
+                      <div className="avatar-overlay">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
                           <circle cx="12" cy="13" r="4"/>
@@ -346,11 +344,9 @@ export function SettingsModal({ onClose }) {
                     <div className="settings-avatar-email">{user?.email}</div>
                     <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
                       <button
+                        className="avatar-action-btn"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={avatarUploading}
-                        style={{ fontSize: 11, color: "var(--text-secondary, #6b7280)", background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit", transition: "color 0.1s" }}
-                        onMouseEnter={e => e.currentTarget.style.color = "var(--text-primary, #111827)"}
-                        onMouseLeave={e => e.currentTarget.style.color = "var(--text-secondary, #6b7280)"}
                       >
                         {user?.avatarUrl ? "Change photo" : "Upload photo"}
                       </button>
@@ -358,11 +354,9 @@ export function SettingsModal({ onClose }) {
                         <>
                           <span style={{ fontSize: 11, color: "var(--text-muted, #b0b3be)" }}>·</span>
                           <button
+                            className="avatar-action-btn danger"
                             onClick={handleRemoveAvatar}
                             disabled={avatarUploading}
-                            style={{ fontSize: 11, color: "var(--text-secondary, #6b7280)", background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit", transition: "color 0.1s" }}
-                            onMouseEnter={e => e.currentTarget.style.color = "#dc2626"}
-                            onMouseLeave={e => e.currentTarget.style.color = "var(--text-secondary, #6b7280)"}
                           >
                             Remove
                           </button>

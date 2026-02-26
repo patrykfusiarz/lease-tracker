@@ -14,9 +14,9 @@ const COLUMNS = [
   { label: "Model",      key: "model"               },
   { label: "Incentive",  key: "privateIncentive"    },
   { label: "Expiration", key: "incentiveExp"        },
-  { label: "Inc. Mo.",   key: "incentiveExp"        },
-  { label: "Lease End",  key: "leaseEnd"            },
   { label: "Mo. Left",   key: "leaseEnd"            },
+  { label: "Lease End",  key: "leaseEnd"            },
+  { label: "Days Left",  key: "leaseEnd"            },
   { label: "Status",     key: "status"              },
   { label: "",           key: null                  },
 ];
@@ -34,10 +34,11 @@ const STATUSES = [
   { key: "lost",          label: "Lost Deal",    color: "#9a4050", order: 7 },
 ];
 
+const STATUS_MAP = new Map(STATUSES.map(s => [s.key, s]));
 function statusMeta(key) {
-  return STATUSES.find(s => s.key === key) || STATUSES[0];
+  return STATUS_MAP.get(key) || STATUSES[0];
 }
-const STORAGE_KEY = "lease-tracker-v6";
+
 const EMPTY_FORM = {
   name: "", year: "", model: "", trim: "", bank: "",
   term: "", milesYearly: "", milesTerm: "", currentMiles: "",
@@ -393,70 +394,6 @@ function buildCustomer(raw) {
   };
 }
 
-// ── SEED DATA ─────────────────────────────────────────────────────────────────
-
-const SEED_CUSTOMERS = [
-  {
-    id: uid(), name: "Marcus Webb", year: 2022, model: "Tiguan", trim: "SE", bank: "VW Credit",
-    term: 36, monthlyPayment: 389, downPayment: 2000, tradeEquity: 1200,
-    milesYearly: 12000, milesTerm: 36000, currentMiles: 28400,
-    leaseEnd: "Apr 15, 2026", privateIncentive: 1500, incentiveExp: "Mar 31", status: "attempting",
-  },
-  {
-    id: uid(), name: "Priya Nair", year: 2023, model: "Jetta", trim: "SEL", bank: "VW Credit",
-    term: 36, monthlyPayment: 299, downPayment: 1500, tradeEquity: 0,
-    milesYearly: 10000, milesTerm: 30000, currentMiles: 21900,
-    leaseEnd: "May 20, 2026", privateIncentive: 750, incentiveExp: "Apr 15", status: "contact",
-  },
-  {
-    id: uid(), name: "Jordan Ellis", year: 2022, model: "Atlas", trim: "SE Black", bank: "VW Credit",
-    term: 36, monthlyPayment: 489, downPayment: 0, tradeEquity: 800,
-    milesYearly: 12000, milesTerm: 36000, currentMiles: 34100,
-    leaseEnd: "Mar 28, 2026", privateIncentive: 2000, incentiveExp: "Mar 15", status: "early",
-  },
-  {
-    id: uid(), name: "Sofia Reyes", year: 2023, model: "Atlas", trim: "SEL Premium R-Line", bank: "Ally",
-    term: 39, monthlyPayment: 612, downPayment: 3500, tradeEquity: 2200,
-    milesYearly: 10000, milesTerm: 32500, currentMiles: 18200,
-    leaseEnd: "Jul 10, 2026", privateIncentive: 1500, incentiveExp: "Jun 1", status: "waiting",
-  },
-  {
-    id: uid(), name: "Derek Huang", year: 2024, model: "GTI", trim: "SE", bank: "VW Credit",
-    term: 36, monthlyPayment: 379, downPayment: 1000, tradeEquity: 0,
-    milesYearly: 15000, milesTerm: 45000, currentMiles: 11300,
-    leaseEnd: "Mar 5, 2026", privateIncentive: 1750, incentiveExp: "Mar 20", status: "success",
-  },
-  {
-    id: uid(), name: "Aisha Okon", year: 2023, model: "Taos", trim: "SE Tech", bank: "Ally",
-    term: 48, monthlyPayment: 329, downPayment: 2000, tradeEquity: 0,
-    milesYearly: 10000, milesTerm: 40000, currentMiles: 15600,
-    leaseEnd: "Aug 22, 2026", privateIncentive: 0, incentiveExp: "—", status: "lost",
-  },
-  {
-    id: uid(), name: "Luca Ferraro", year: 2022, model: "Cross Sport", trim: "SEL", bank: "VW Credit",
-    term: 36, monthlyPayment: 449, downPayment: 2500, tradeEquity: 1800,
-    milesYearly: 12000, milesTerm: 36000, currentMiles: 26700,
-    leaseEnd: "Jun 3, 2026", privateIncentive: 1000, incentiveExp: "May 30", status: "attempting",
-  },
-  {
-    id: uid(), name: "Nina Patel", year: 2024, model: "Golf R", trim: "S", bank: "VW Credit",
-    term: 36, monthlyPayment: 522, downPayment: 1500, tradeEquity: 950,
-    milesYearly: 12000, milesTerm: 36000, currentMiles: 8900,
-    leaseEnd: "Apr 30, 2026", privateIncentive: 1250, incentiveExp: "Apr 1", status: "contact",
-  },
-  {
-    id: uid(), name: "Omar Hassan", year: 2023, model: "GLI", trim: "SE Black", bank: "Affinity",
-    term: 36, monthlyPayment: 349, downPayment: 0, tradeEquity: 0,
-    milesYearly: 10000, milesTerm: 30000, currentMiles: 12100,
-    leaseEnd: "Sep 14, 2026", privateIncentive: 0, incentiveExp: "—", status: "early",
-  },
-  {
-    id: uid(), name: "Claire Dubois", year: 2022, model: "Tiguan", trim: "SEL Premium R-Line", bank: "VW Credit",
-    term: 39, monthlyPayment: 459, downPayment: 3000, tradeEquity: 1600,
-    milesYearly: 12000, milesTerm: 39000, currentMiles: 29800,
-    leaseEnd: "May 8, 2026", privateIncentive: 1000, incentiveExp: "Apr 30", status: "waiting",
-  },
-];
 
 // ── REDUCER ───────────────────────────────────────────────────────────────────
 
@@ -635,7 +572,7 @@ const css = `
   .nav-icon { display: flex; align-items: center; justify-content: center; opacity: 0.45; width: 16px; flex-shrink: 0; }
   .nav-item.active .nav-icon { opacity: 0.65; }
   .nav-count { margin-left: auto; font-size: 10.5px; color: var(--text-nav-count); background: var(--bg-hover-sm); border-radius: 20px; padding: 1px 7px; font-weight: 500; }
-  .app.day .nav-count { background: #e8eaef; color: #9ca3af; }
+  .app.day .nav-count { background: transparent; color: #b0b3be; }
 
   .sidebar-footer { padding: 8px 8px 14px; display: flex; align-items: center; justify-content: space-between; }
 
@@ -677,6 +614,7 @@ const css = `
 
   .btn-primary { display: flex; align-items: center; gap: 6px; background: var(--btn-primary-bg); color: var(--btn-primary-text); border: none; border-radius: 7px; padding: 0 13px; height: 30px; font-size: 12.5px; font-family: 'Inter', sans-serif; font-weight: 500; cursor: pointer; transition: background 0.15s; white-space: nowrap; letter-spacing: -0.1px; }
   .btn-primary:hover { background: var(--btn-primary-hover); }
+  .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
 
   .btn-secondary { display: flex; align-items: center; gap: 6px; background: transparent; color: var(--text-secondary); border: 1px solid var(--border-input); border-radius: 6px; padding: 5px 12px; font-size: 12px; font-family: 'Inter', sans-serif; font-weight: 500; cursor: pointer; transition: background 0.1s, color 0.1s; white-space: nowrap; }
   .btn-secondary:hover { background: var(--bg-hover); color: var(--text-primary); border-color: var(--border-status); }
@@ -1032,8 +970,8 @@ export default function LeaseTracker() {
   const notesRef = useRef(null);
 
   const [search,    setSearch]    = useState("");
-  const [sortKey,   setSortKey]   = useState(() => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY + "-prefs") || "{}").sortKey || null; } catch { return null; } });
-  const [sortDir,   setSortDir]   = useState(() => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY + "-prefs") || "{}").sortDir || "asc"; } catch { return "asc"; } });
+  const [sortKey,   setSortKey]   = useState(() => { try { return JSON.parse(localStorage.getItem("lt-prefs") || "{}").sortKey || null; } catch { return null; } });
+  const [sortDir,   setSortDir]   = useState(() => { try { return JSON.parse(localStorage.getItem("lt-prefs") || "{}").sortDir || "asc"; } catch { return "asc"; } });
 
   const [showModal, setShowModal] = useState(false);
   const [form,      setForm]      = useState(EMPTY_FORM);
@@ -1046,12 +984,12 @@ export default function LeaseTracker() {
     try { const saved = localStorage.getItem('lt_theme'); return saved !== null ? saved === 'day' : true; } catch { return true; }
   });
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [density, setDensity] = useState("comfortable"); // compact | comfortable
+  const [density, setDensity] = useState(() => { try { return JSON.parse(localStorage.getItem("lt-prefs") || "{}").density || "comfortable"; } catch { return "comfortable"; } });
   const [flashingStatus, setFlashingStatus] = useState(null);
   const [themeAnimating, setThemeAnimating] = useState(false);
   const [densityOpen, setDensityOpen] = useState(false);
   const densityRef = useRef(null);
-  const [statFilter, setStatFilter]  = useState(() => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY + "-prefs") || "{}").statFilter || null; } catch { return null; } });
+  const [statFilter, setStatFilter]  = useState(() => { try { return JSON.parse(localStorage.getItem("lt-prefs") || "{}").statFilter || null; } catch { return null; } });
 
   const toggleTheme = useCallback(() => {
     setThemeAnimating(true);
@@ -1078,23 +1016,21 @@ export default function LeaseTracker() {
     if (!user) return;
     async function loadFromSupabase() {
       setDbLoading(true);
-      // Load customers
-      const { data: custData } = await supabase
+      // Single query — fetch customers with their notes embedded (1 round-trip instead of 2)
+      const { data, error } = await supabase
         .from("customers")
-        .select("*")
+        .select("*, notes(*)")
         .eq("user_id", user.id)
         .order("created_at", { ascending: true });
 
-      // Load notes
-      const { data: notesData } = await supabase
-        .from("notes")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
+      if (error) {
+        addToast("Failed to load data — refresh to try again", "error");
+        setDbLoading(false);
+        return;
+      }
 
-      if (custData) {
-        // Convert snake_case DB fields to camelCase app fields
-        const mapped = custData.map(c => ({
+      if (data) {
+        const mapped = data.map(c => ({
           id:               c.id,
           name:             c.name,
           year:             c.year,
@@ -1113,20 +1049,18 @@ export default function LeaseTracker() {
           incentiveExp:     c.incentive_exp || "—",
           status:           c.status || "early",
           updatedAt:        c.updated_at,
+          vin:              c.vin || "",
         }));
         dispatch({ type: "LOAD_CUSTOMERS", customers: mapped });
-      }
 
-      if (notesData) {
-        // Group notes by customer_id
-        const grouped = {};
-        notesData.forEach(n => {
-          if (!grouped[n.customer_id]) grouped[n.customer_id] = [];
-          grouped[n.customer_id].push({ id: n.id, text: n.text, savedAt: n.saved_at });
-        });
+        // Build notes map from embedded notes — already sorted by DB
         const notesMap = {};
-        Object.entries(grouped).forEach(([custId, entries]) => {
-          notesMap[custId] = { history: entries };
+        data.forEach(c => {
+          if (c.notes?.length) {
+            // Sort descending by created_at
+            const sorted = [...c.notes].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            notesMap[c.id] = { history: sorted.map(n => ({ id: n.id, text: n.text, savedAt: n.saved_at })) };
+          }
         });
         dispatch({ type: "LOAD_NOTES", notes: notesMap });
       }
@@ -1134,6 +1068,36 @@ export default function LeaseTracker() {
       setDbLoading(false);
     }
     loadFromSupabase();
+  }, [user]);
+
+  // ── Realtime — keep data live for multi-user environments ──
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel("meridian-live")
+      .on("postgres_changes",
+        { event: "UPDATE", schema: "public", table: "customers", filter: `user_id=eq.${user.id}` },
+        ({ new: row }) => {
+          const updates = {
+            name: row.name, year: row.year, model: row.model || "—", trim: row.trim || "—",
+            bank: row.bank || "—", term: row.term, milesYearly: row.miles_yearly,
+            milesTerm: row.miles_term, currentMiles: row.current_miles,
+            monthlyPayment: row.monthly_payment, downPayment: row.down_payment,
+            tradeEquity: row.trade_equity, leaseEnd: row.lease_end || "—",
+            privateIncentive: row.private_incentive, incentiveExp: row.incentive_exp || "—",
+            status: row.status || "early", updatedAt: row.updated_at, vin: row.vin || "",
+          };
+          dispatch({ type: "UPDATE_CUSTOMER", id: row.id, updates });
+        }
+      )
+      .on("postgres_changes",
+        { event: "INSERT", schema: "public", table: "notes", filter: `user_id=eq.${user.id}` },
+        ({ new: n }) => {
+          dispatch({ type: "SAVE_NOTE", id: n.customer_id, text: n.text, savedAt: n.saved_at, entryId: n.id });
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
   }, [user]);
 
   // ── Keep snapshot fresh while panel is open ──
@@ -1194,14 +1158,14 @@ export default function LeaseTracker() {
     const now = new Date();
     const savedAt = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) + " · " + now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
     const entryId = uid();
-    // Write to Supabase
-    await supabase.from("notes").insert({
+    const { error } = await supabase.from("notes").insert({
       id:          entryId,
       customer_id: selected,
       user_id:     user.id,
       text:        noteDraft.trim(),
       saved_at:    savedAt,
     });
+    if (error) { addToast("Failed to save note — try again", "error"); return; }
     dispatch({ type: "SAVE_NOTE", id: selected, text: noteDraft.trim(), savedAt, entryId });
     setNoteDraft("");
     setNoteSaved(true);
@@ -1254,25 +1218,25 @@ export default function LeaseTracker() {
       privateIncentive:    form.privateIncentive,
       incentiveExp,
     };
-    // Write to Supabase
-    await supabase.from("customers").update({
-      name:             updates.name,
-      year:             updates.year,
-      model:            updates.model === "—" ? null : updates.model,
-      trim:             updates.trim  === "—" ? null : updates.trim,
-      bank:             updates.bank  === "—" ? null : updates.bank,
-      term:             updates.term,
-      miles_yearly:     updates.milesYearly,
-      miles_term:       updates.milesTerm,
-      current_miles:    updates.currentMiles,
-      monthly_payment:  updates.monthlyPayment,
-      down_payment:     updates.downPayment,
-      trade_equity:     updates.tradeEquity,
-      lease_end:        updates.leaseEnd === "—" ? null : updates.leaseEnd,
+    const { error } = await supabase.from("customers").update({
+      name:              updates.name,
+      year:              updates.year,
+      model:             updates.model === "—" ? null : updates.model,
+      trim:              updates.trim  === "—" ? null : updates.trim,
+      bank:              updates.bank  === "—" ? null : updates.bank,
+      term:              updates.term,
+      miles_yearly:      updates.milesYearly,
+      miles_term:        updates.milesTerm,
+      current_miles:     updates.currentMiles,
+      monthly_payment:   updates.monthlyPayment,
+      down_payment:      updates.downPayment,
+      trade_equity:      updates.tradeEquity,
+      lease_end:         updates.leaseEnd === "—" ? null : updates.leaseEnd,
       private_incentive: updates.privateIncentive,
-      incentive_exp:    updates.incentiveExp === "—" ? null : updates.incentiveExp,
-      updated_at:       new Date().toISOString(),
+      incentive_exp:     updates.incentiveExp === "—" ? null : updates.incentiveExp,
+      // updated_at is set by a DB trigger — do not pass from client
     }).eq("id", selected);
+    if (error) { addToast("Failed to save — try again", "error"); return; }
     dispatch({ type: "UPDATE_CUSTOMER", id: selected, updates });
     setEditMode(false);
     setEditSaved(true);
@@ -1321,47 +1285,60 @@ export default function LeaseTracker() {
     setImportText("");
   };
 
+  const [addLoading, setAddLoading] = useState(false);
+
   const handleAdd = async () => {
+    if (addLoading) return;
     const customer = buildCustomer(form);
-    // Write to Supabase
+    setAddLoading(true);
     const { error } = await supabase.from("customers").insert({
-      id:               customer.id,
-      user_id:          user.id,
-      name:             customer.name,
-      year:             customer.year,
-      model:            customer.model === "—" ? null : customer.model,
-      trim:             customer.trim  === "—" ? null : customer.trim,
-      bank:             customer.bank  === "—" ? null : customer.bank,
-      term:             customer.term,
-      miles_yearly:     customer.milesYearly,
-      miles_term:       customer.milesTerm,
-      current_miles:    customer.currentMiles,
-      monthly_payment:  customer.monthlyPayment,
-      down_payment:     customer.downPayment,
-      trade_equity:     customer.tradeEquity,
-      lease_end:        customer.leaseEnd === "—" ? null : customer.leaseEnd,
+      id:                customer.id,
+      user_id:           user.id,
+      name:              customer.name,
+      year:              customer.year,
+      model:             customer.model === "—" ? null : customer.model,
+      trim:              customer.trim  === "—" ? null : customer.trim,
+      bank:              customer.bank  === "—" ? null : customer.bank,
+      term:              customer.term,
+      miles_yearly:      customer.milesYearly,
+      miles_term:        customer.milesTerm,
+      current_miles:     customer.currentMiles,
+      monthly_payment:   customer.monthlyPayment,
+      down_payment:      customer.downPayment,
+      trade_equity:      customer.tradeEquity,
+      lease_end:         customer.leaseEnd === "—" ? null : customer.leaseEnd,
       private_incentive: customer.privateIncentive,
-      incentive_exp:    customer.incentiveExp === "—" ? null : customer.incentiveExp,
-      status:           customer.status,
+      incentive_exp:     customer.incentiveExp === "—" ? null : customer.incentiveExp,
+      status:            customer.status,
+      // created_at / updated_at set by DB defaults
     });
-    if (!error) {
-      dispatch({ type: "ADD_CUSTOMER", customer });
-      closeModal();
-      closePanel();
-      setTimeout(() => openPanel(customer.id), 50);
-      addToast(`${customer.name} added`);
-    }
+    setAddLoading(false);
+    if (error) { addToast("Failed to add customer — try again", "error"); return; }
+    dispatch({ type: "ADD_CUSTOMER", customer });
+    closeModal();
+    // Open panel directly — no setTimeout hack needed, customer is in state now
+    setSelected(customer.id);
+    setSnapCustomer(customer);
+    setNoteDraft("");
+    setNotesOpen(false);
+    setEditMode(false);
+    setEditSaved(false);
+    setPanelState("open");
+    addToast(`${customer.name} added`);
   };
 
   // ── Delete ──
 
   const confirmDelete = (id, e) => { e.stopPropagation(); setConfirmDel(id); };
   const executeDelete = async () => {
-    const delName = customers.find(x => x.id === confirmDel)?.name || "Customer";
-    if (confirmDel === selected) closePanel();
-    await supabase.from("customers").delete().eq("id", confirmDel);
-    dispatch({ type: "DELETE_CUSTOMER", id: confirmDel });
+    const delId   = confirmDel;
+    const delName = customers.find(x => x.id === delId)?.name || "Customer";
+    // Close dialog optimistically — but only dispatch after DB confirms
     setConfirmDel(null);
+    const { error } = await supabase.from("customers").delete().eq("id", delId);
+    if (error) { addToast("Failed to delete — try again", "error"); return; }
+    if (delId === selected) closePanel();
+    dispatch({ type: "DELETE_CUSTOMER", id: delId });
     addToast(`${delName} deleted`, "info");
   };
 
@@ -1374,8 +1351,8 @@ export default function LeaseTracker() {
 
   // ── Derived ──
 
-  const { filtered, urgentCount, soonCount, withIncentive, milesAtRisk } = useMemo(() => {
-    const q = search.toLowerCase();
+  // Stat counts — only re-compute when customers list changes, not on search/sort
+  const { urgentCount, soonCount, withIncentive, milesAtRisk } = useMemo(() => {
     let urgent = 0, soon = 0, incentive = 0, miles = 0;
     customers.forEach(c => {
       const ml = calcMonthsLeft(c.leaseEnd);
@@ -1386,7 +1363,13 @@ export default function LeaseTracker() {
       const mp = calcMileagePace(c);
       if (mp && (mp.status === "over" || mp.status === "warning")) miles++;
     });
-    const all = customers
+    return { urgentCount: urgent, soonCount: soon, withIncentive: incentive, milesAtRisk: miles };
+  }, [customers]);
+
+  // Filtered + sorted rows — re-runs on search, sort, or filter change
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase();
+    return customers
       .filter(c => {
         if (!c.name.toLowerCase().includes(q) && !c.model.toLowerCase().includes(q)) return false;
         if (statFilter === 'urgent')    return calcMonthsLeft(c.leaseEnd) === 0 && calcDaysLeft(c.leaseEnd) > 0;
@@ -1410,7 +1393,6 @@ export default function LeaseTracker() {
           : typeof av === "string" ? av.localeCompare(bv) : av - bv;
         return sortDir === "asc" ? cmp : -cmp;
       });
-    return { filtered: all, urgentCount: urgent, soonCount: soon, withIncentive: incentive, milesAtRisk: miles };
   }, [customers, search, sortKey, sortDir, statFilter]);
 
   const panelVisible = panelState !== "closed";
@@ -1436,12 +1418,7 @@ export default function LeaseTracker() {
           {/* Header — avatar + name + collapse arrow when expanded */}
           <div className="sidebar-header">
             <div className="profile-btn" onClick={() => setShowSettings(true)} title="Account settings">
-              <div className="profile-avatar">
-                {user?.avatarUrl
-                  ? <img src={user.avatarUrl} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", borderRadius:7 }} />
-                  : user ? user.name.split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2) : "?"
-                }
-              </div>
+              <div className="profile-avatar">{user ? user.name.split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2) : "?"}</div>
               <span className="profile-name">{user?.name || "Account"}</span>
             </div>
             {!sidebarCollapsed && (
@@ -1498,7 +1475,7 @@ export default function LeaseTracker() {
                 {densityOpen && (
                   <div className="density-menu">
                     {["compact","comfortable"].map(d => (
-                      <div key={d} className={`density-option ${density === d ? "active" : ""}`} onClick={() => { setDensity(d); setDensityOpen(false); }}>
+                      <div key={d} className={`density-option ${density === d ? "active" : ""}`} onClick={() => { setDensity(d); setDensityOpen(false); try { const p = JSON.parse(localStorage.getItem("lt-prefs") || "{}"); localStorage.setItem("lt-prefs", JSON.stringify({ ...p, density: d })); } catch {} }}>
                         {d.charAt(0).toUpperCase() + d.slice(1)}
                         {density === d && <Check size={11} strokeWidth={2.5} />}
                       </div>
@@ -1658,7 +1635,8 @@ export default function LeaseTracker() {
                           className={`status-option ${active ? "active" : ""} ${flashingStatus === s.key ? "flashing" : ""}`}
                           style={active ? { background: s.color, borderColor: s.color } : {}}
                           onClick={async () => {
-                          await supabase.from("customers").update({ status: s.key, updated_at: new Date().toISOString() }).eq("id", selected);
+                          const { error } = await supabase.from("customers").update({ status: s.key }).eq("id", selected);
+                          if (error) { addToast("Failed to update status", "error"); return; }
                           dispatch({ type: "SET_STATUS", id: selected, status: s.key });
                           addToast(`Status → ${s.label}`);
                           setFlashingStatus(s.key);
@@ -1846,7 +1824,8 @@ export default function LeaseTracker() {
                                       className="note-entry-delete"
                                       title="Delete note"
                                       onClick={async () => {
-                                      await supabase.from("notes").delete().eq("id", entry.id);
+                                      const { error } = await supabase.from("notes").delete().eq("id", entry.id);
+                                      if (error) { addToast("Failed to delete note", "error"); return; }
                                       dispatch({ type: "DELETE_NOTE_ENTRY", id: selected, entryId: entry.id });
                                     }}
                                     >
@@ -2123,7 +2102,7 @@ export default function LeaseTracker() {
                     </span>
                   )}
                   <button className="btn-secondary" onClick={closeModal}>Cancel</button>
-                  <button className="btn-primary" onClick={handleAdd}>Add Customer</button>
+                  <button className="btn-primary" onClick={handleAdd} disabled={addLoading}>{addLoading ? "Adding…" : "Add Customer"}</button>
                 </div>
                 </>
               )}

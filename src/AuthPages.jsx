@@ -206,7 +206,7 @@ function passwordStrength(pw) {
 }
 
 export function AuthPage() {
-  const { signIn, signUp, timedOut } = useAuth();
+  const { signIn, signUp, timedOut, resetPassword } = useAuth();
   const [rememberMe,   setRememberMe]   = useState(false);
   const [view,         setView]         = useState("signin");
   const [name,         setName]         = useState("");
@@ -217,12 +217,26 @@ export function AuthPage() {
   const [error,        setError]        = useState("");
   const [loading,      setLoading]      = useState(false);
 
+  const [forgotMode,   setForgotMode]   = useState(false);
+  const [forgotEmail,  setForgotEmail]  = useState("");
+  const [forgotSent,   setForgotSent]   = useState(false);
+
   const strength      = passwordStrength(password);
   const strengthClass = ["","weak","medium","strong"][strength];
 
   const switchView = (v) => {
     setView(v); setError("");
     setName(""); setEmail(""); setPassword(""); setConfirm("");
+  };
+
+  const handleForgot = async (e) => {
+    e.preventDefault(); setError("");
+    if (!forgotEmail.trim()) return setError("Please enter your email address");
+    setLoading(true);
+    const { error } = await resetPassword(forgotEmail.trim().toLowerCase());
+    setLoading(false);
+    if (error) setError(error);
+    else setForgotSent(true);
   };
 
   const handleSignIn = async (e) => {
@@ -270,7 +284,31 @@ export function AuthPage() {
             {timedOut && <div className="auth-timeout">🔒 Signed out after 20 min of inactivity.</div>}
             {error    && <div className="auth-error">{error}</div>}
 
-            {view === "signin" ? (
+            {forgotMode ? (
+              forgotSent ? (
+                <div style={{ textAlign: "center", padding: "12px 0 8px" }}>
+                  <div style={{ fontSize: 28, marginBottom: 12 }}>📬</div>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: "#0f0f1a", marginBottom: 6 }}>Check your inbox</div>
+                  <div style={{ fontSize: 12, color: "#5a5c6e", lineHeight: 1.6, marginBottom: 20 }}>We sent a password reset link to<br /><strong>{forgotEmail}</strong></div>
+                  <button className="auth-btn-primary" onClick={() => { setForgotMode(false); setForgotSent(false); setError(""); }}>Back to Sign In</button>
+                </div>
+              ) : (
+                <form onSubmit={handleForgot}>
+                  <div style={{ fontSize: 12, color: "#5a5c6e", marginBottom: 16, lineHeight: 1.6 }}>Enter your email and we'll send you a reset link.</div>
+                  <div className="auth-field">
+                    <label className="auth-field-label">Email</label>
+                    <input className="auth-input" type="email" name="email" value={forgotEmail}
+                      onChange={e => setForgotEmail(e.target.value)} autoFocus autoComplete="email" />
+                  </div>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 4 }}>
+                    <button type="button" className="auth-forgot" style={{ fontSize: 12 }} onClick={() => { setForgotMode(false); setError(""); }}>← Back</button>
+                    <button className="auth-btn-primary" type="submit" disabled={loading} style={{ marginLeft: "auto" }}>
+                      {loading ? "Sending…" : "Send Reset Link"}
+                    </button>
+                  </div>
+                </form>
+              )
+            ) : view === "signin" ? (
               <form onSubmit={handleSignIn}>
                 <div className="auth-field">
                   <label className="auth-field-label">Email</label>
@@ -288,7 +326,7 @@ export function AuthPage() {
                       <EyeIcon open={showPw} />
                     </button>
                   </div>
-                  <button type="button" className="auth-forgot">Forgot password?</button>
+                  <button type="button" className="auth-forgot" onClick={() => { setForgotMode(true); setForgotEmail(email); setError(""); }}>Forgot password?</button>
                 </div>
 
                 <label className="auth-remember">

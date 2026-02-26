@@ -859,8 +859,50 @@ function formatDollar(val) {
 
 // ── COMPONENT ─────────────────────────────────────────────────────────────────
 
+
+// ── Toast system ──────────────────────────────────────────────────────────────
+function useToast() {
+  const [toasts, setToasts] = useState([]);
+
+  const addToast = useCallback((message, type = "success") => {
+    const id = uid();
+    setToasts(prev => [...prev, { id, message, type, leaving: false }]);
+    setTimeout(() => {
+      setToasts(prev => prev.map(t => t.id === id ? { ...t, leaving: true } : t));
+      setTimeout(() => {
+        setToasts(prev => prev.filter(t => t.id !== id));
+      }, 200);
+    }, 3000);
+  }, []);
+
+  return { toasts, addToast };
+}
+
+const TOAST_ICONS = {
+  success: "✓",
+  error:   "✕",
+  info:    "i",
+  warning: "!",
+};
+
+function ToastContainer({ toasts }) {
+  if (!toasts.length) return null;
+  return (
+    <div className="toast-container">
+      {toasts.map(t => (
+        <div key={t.id} className={`toast${t.leaving ? " leaving" : ""}`}>
+          <div className={`toast-icon ${t.type}`}>{TOAST_ICONS[t.type]}</div>
+          <span className="toast-message">{t.message}</span>
+          <div className="toast-progress" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function LeaseTracker() {
   const { user, signOut } = useAuth();
+  const { toasts, addToast } = useToast();
   const [showSettings, setShowSettings] = useState(false);
   const [state,   dispatch] = useReducer(reducer, null, loadState);
   const { customers, notes } = state;
@@ -1049,6 +1091,7 @@ export default function LeaseTracker() {
     dispatch({ type: "SAVE_NOTE", id: selected, text: noteDraft.trim(), savedAt, entryId });
     setNoteDraft("");
     setNoteSaved(true);
+    addToast("Note saved");
     setTimeout(() => setNoteSaved(false), 2000);
   }, [selected, noteDraft, user]);
 
@@ -1986,6 +2029,7 @@ export default function LeaseTracker() {
         })()}
 
       </div>
+      <ToastContainer toasts={toasts} />
     </>
   );
 }

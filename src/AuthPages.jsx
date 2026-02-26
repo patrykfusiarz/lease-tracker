@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useAuth } from "./auth";
 
 const authCss = `
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:wght@400;500&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -180,54 +180,6 @@ const authCss = `
   }
 `;
 
-// Meridian logo — concentric rings with cardinal points, like a navigation compass
-function MeridianLogo({ size = 28 }) {
-  const cx = 20, cy = 20;
-  // Generate 16 tick marks (4 cardinal major, 4 intercardinal medium, 8 minor)
-  const ticks = Array.from({ length: 16 }).map((_, i) => {
-    const angle = (i * 22.5 - 90) * (Math.PI / 180);
-    const isMajor = i % 4 === 0;
-    const isMed   = i % 2 === 0 && !isMajor;
-    const outerR  = 18.5;
-    const innerR  = isMajor ? 14.5 : isMed ? 16 : 17;
-    return {
-      x1: cx + innerR * Math.cos(angle),
-      y1: cy + innerR * Math.sin(angle),
-      x2: cx + outerR * Math.cos(angle),
-      y2: cy + outerR * Math.sin(angle),
-      w:  isMajor ? "1" : isMed ? "0.7" : "0.45",
-      op: isMajor ? "0.9" : isMed ? "0.65" : "0.4",
-    };
-  });
-
-  return (
-    <svg width={size} height={size} viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-      {/* Outer ring */}
-      <circle cx={cx} cy={cy} r="19" stroke="#2a2a3a" strokeWidth="0.9" fill="none" />
-      {/* Second ring */}
-      <circle cx={cx} cy={cy} r="13.5" stroke="#4a4a5a" strokeWidth="0.55" fill="none" />
-      {/* Inner ring */}
-      <circle cx={cx} cy={cy} r="7.5" stroke="#5a5a6a" strokeWidth="0.5" fill="none" />
-      {/* Tick marks */}
-      {ticks.map((t, i) => (
-        <line key={i} x1={t.x1} y1={t.y1} x2={t.x2} y2={t.y2}
-          stroke="#2a2a3a" strokeWidth={t.w} opacity={t.op} strokeLinecap="round" />
-      ))}
-      {/* Cardinal cross lines through center (like a compass rose) */}
-      <line x1={cx} y1={cy-13.5} x2={cx} y2={cy-7.5} stroke="#2a2a3a" strokeWidth="0.6" opacity="0.5" />
-      <line x1={cx} y1={cy+7.5}  x2={cx} y2={cy+13.5} stroke="#2a2a3a" strokeWidth="0.6" opacity="0.5" />
-      <line x1={cx-13.5} y1={cy} x2={cx-7.5} y2={cy} stroke="#2a2a3a" strokeWidth="0.6" opacity="0.5" />
-      <line x1={cx+7.5}  y1={cy} x2={cx+13.5} y2={cy} stroke="#2a2a3a" strokeWidth="0.6" opacity="0.5" />
-      {/* North pointer — filled diamond pointing up */}
-      <polygon points="20,6.5 21.4,11 20,10 18.6,11" fill="#1a1a2e" opacity="0.85" />
-      {/* South pointer — outline only */}
-      <polygon points="20,33.5 21.4,29 20,30 18.6,29" fill="none" stroke="#1a1a2e" strokeWidth="0.6" opacity="0.5" />
-      {/* Center dot */}
-      <circle cx={cx} cy={cy} r="1.6" fill="#1a1a2e" opacity="0.8" />
-      <circle cx={cx} cy={cy} r="0.7" fill="#fff" opacity="0.9" />
-    </svg>
-  );
-}
 
 function EyeIcon({ open }) {
   return open ? (
@@ -300,14 +252,7 @@ export function AuthPage() {
       <div className="auth-root">
 
         <nav className="auth-nav">
-          <span style={{
-            fontFamily:"'Playfair Display', Georgia, serif",
-            fontSize:17,
-            fontWeight:400,
-            color:"#1a1a2e",
-            letterSpacing:"-0.2px",
-            lineHeight:1,
-          }}>Meridian</span>
+
           <button className="auth-nav-right" onClick={() => switchView(view === "signin" ? "signup" : "signin")}>
             {view === "signin" ? "Create Account ›" : "Sign In ›"}
           </button>

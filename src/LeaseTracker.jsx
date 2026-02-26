@@ -537,7 +537,7 @@ const css = `
   /* ── LIGHT THEME — Mercury style ── */
   .app.day {
     --bg-body:        #f5f6f8;
-    --bg-sidebar:     #ffffff;
+    --bg-sidebar:     #f5f6f8;
     --bg-panel:       #ffffff;
     --bg-card:        #ffffff;
     --bg-input:       #f5f6f8;
@@ -604,7 +604,7 @@ const css = `
   .sidebar.collapsed .sidebar-footer { justify-content: center; }
   .profile-avatar { width: 28px; height: 28px; background: linear-gradient(135deg, #1a3a6e, #2a5090); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: #fff; letter-spacing: 0.3px; flex-shrink: 0; }
   .app.day .profile-avatar { background: linear-gradient(135deg, #8c90cc, #a0a8e0); }
-  .app.day .sidebar { box-shadow: 1px 0 0 #eceef2; }
+  .app.day .sidebar { box-shadow: none; border-right: 1px solid #eceef2; }
   .profile-name { font-size: 12.5px; font-weight: 500; color: var(--text-primary); letter-spacing: -0.1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .sidebar-body { flex: 1; padding: 12px 8px; display: flex; flex-direction: column; gap: 2px; }
   .sidebar-section-label { font-size: 10px; color: var(--text-section); letter-spacing: 0.5px; text-transform: uppercase; padding: 0 8px; margin-bottom: 4px; font-weight: 600; }

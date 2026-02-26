@@ -51,16 +51,17 @@ function uid() { return crypto.randomUUID(); }
 
 // ── DMS paste parser ──────────────────────────────────────────────────────────
 function parseDMS(raw) {
-  const text = raw;
+  // Normalize: collapse tabs and multiple spaces into single space, keep newlines
+  const text = raw.replace(/[ \t]+/g, " ").replace(/\r/g, "");
   const get = (re) => { const m = text.match(re); return m ? m[1].trim() : ""; };
   const money = (s) => s ? s.replace(/[$,]/g, "").trim() : "";
 
-  // Name
+  // Name — first line, everything before first " - "
   const firstLine = text.split("\n")[0] || "";
-  const name = firstLine.split(/\s+-\s+/)[0].trim();
+  const name = firstLine.split(/\s*-\s*/)[0].trim();
 
-  // Vehicle
-  const vpMatch = text.match(/Vehicle Purchased:\s*(.+?)VIN:/s);
+  // Vehicle — between "Vehicle Purchased:" and "VIN:"
+  const vpMatch = text.match(/Vehicle Purchased:\s*([\s\S]+?)(?=VIN:)/);
   const vehicleRaw = vpMatch ? vpMatch[1].replace(/\s+/g, " ").trim() : "";
   const yearMatch = vehicleRaw.match(/(20\d{2}|19\d{2})/);
   const year = yearMatch ? yearMatch[1] : "";
@@ -68,16 +69,17 @@ function parseDMS(raw) {
   let model = "";
   for (const m of MODELS) { if (vehicleRaw.toLowerCase().includes(m.toLowerCase())) { model = m; break; } }
 
-  // VIN
-  const vin = get(/VIN:\s*([A-HJ-NPR-Z0-9]{17})/i);
+  // VIN — first 17-char VIN (the purchased vehicle, not the trade)
+  const vinMatch = text.match(/VIN:\s*([A-HJ-NPR-Z0-9]{17})/i);
+  const vin = vinMatch ? vinMatch[1] : "";
 
-  // Odometer
-  const milMatch = text.match(/Mileage[:\s]+(\d+)/i);
+  // Odometer — Mileage on the purchased vehicle (first occurrence, skip trade mileage)
+  const milMatch = text.match(/Mileage:\s*(\d+)/i);
   const currentMiles = milMatch ? milMatch[1] : "";
 
   // Lease terms
   const term = get(/\bTerm:\s*(\d+)/);
-  const myRaw = get(/Total Lease Mileage[:\s]+(\d[\d,]*)/i);
+  const myRaw = get(/Total Lease Mileage:\s*(\d[\d,]*)/i);
   const milesYearly = myRaw.replace(/,/g, "");
   const milesTerm = (milesYearly && term)
     ? String(Math.round((parseInt(milesYearly) / 12) * parseInt(term))) : "";
@@ -86,7 +88,7 @@ function parseDMS(raw) {
   const monthlyPayment = money(get(/Monthly Payment:\s*\$?([\d,]+\.?\d*)/));
   const downPayment    = money(get(/Down Payment:\s*\$?([\d,]+\.?\d*)/));
 
-  // Trade equity
+  // Trade equity = Total Trade Allowance - Total Trade Payoff
   const allowance = parseFloat(money(get(/Total Trade Allowance:\s*\$?([\d,]+\.?\d*)/))||"0") || 0;
   const payoff    = parseFloat(money(get(/Total Trade Payoff:\s*\$?([\d,]+\.?\d*)/))||"0")    || 0;
   const tradeEquity = allowance > 0 ? String((allowance - payoff).toFixed(2)) : "";
@@ -102,7 +104,7 @@ function parseDMS(raw) {
   }
 
   // Bank
-  const bankRaw = get(/Financed Through:\s*([^\n\r]+)/);
+  const bankRaw = get(/Financed Through:\s*([^\n]+)/);
   const BANKS = { "VCIL": "VW Credit", "VW CREDIT": "VW Credit", "ALLY": "Ally", "AFFINITY": "Affinity", "CAL": "Cal", "CASH": "" };
   const bank = BANKS[(bankRaw||"").trim().toUpperCase()] ?? bankRaw;
 

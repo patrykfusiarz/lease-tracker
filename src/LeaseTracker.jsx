@@ -570,8 +570,8 @@ const css = `
     --shadow-modal:    rgba(0,0,0,0.08);
     --overlay-bg:      rgba(17,24,39,0.12);
     --overlay-bg2:     rgba(17,24,39,0.2);
-    --btn-primary-bg:   #1d1d35;
-    --btn-primary-hover: #2d2d50;
+    --btn-primary-bg:   #8c90cc;
+    --btn-primary-hover: #7b80bc;
     --btn-primary-text:  #ffffff;
   }
 
@@ -841,7 +841,7 @@ const css = `
   .notes-textarea::placeholder { color: var(--text-muted); }
   .notes-footer { display: flex; align-items: center; justify-content: space-between; }
   .notes-saved-at { font-size: 10.5px; color: var(--text-muted); }
-  .notes-save-btn { padding: 4px 13px; border-radius: 6px; background: #1d1d35; color: #fff; border: none; font-size: 11.5px; font-family: 'Inter', sans-serif; font-weight: 600; cursor: pointer; transition: opacity 0.15s; }
+  .notes-save-btn { padding: 4px 13px; border-radius: 6px; background: #8c90cc; color: #fff; border: none; font-size: 11.5px; font-family: 'Inter', sans-serif; font-weight: 600; cursor: pointer; transition: opacity 0.15s; }
   .app:not(.day) .notes-save-btn { background: #3d7ed4; }
   .notes-save-btn:hover    { opacity: 0.85; }
   .notes-save-btn:disabled { opacity: 0.35; cursor: not-allowed; }

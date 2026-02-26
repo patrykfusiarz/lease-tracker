@@ -491,7 +491,7 @@ const css = `
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Inter', sans-serif; height: 100vh; overflow: hidden; background: #0c0c0e; }
-  body:has(.app.day) { background: #eceef2; }
+  body:has(.app.day) { background: #f2f3f5; }
 
   .app {
     --bg-body:        #131720;
@@ -536,8 +536,8 @@ const css = `
 
   /* ── LIGHT THEME — Mercury faithful ── */
   .app.day {
-    --bg-body:         #eceef2;
-    --bg-sidebar:      #eceef2;
+    --bg-body:         #f2f3f5;
+    --bg-sidebar:      #f2f3f5;
     --bg-panel:        #ffffff;
     --bg-card:         #ffffff;
     --bg-input:        #f5f6f8;
@@ -646,8 +646,8 @@ const css = `
 
   .toggle-track { width: 28px; height: 16px; border-radius: 20px; background: var(--border-input); border: 1px solid var(--border-status); transition: background 0.2s, border-color 0.2s; flex-shrink: 0; position: relative; }
   .toggle-track.on { background: #1e2a3a; border-color: #2a3a4a; }
-  .app.day .toggle-track.on { background: #c7d2fe; border-color: #a5b4fc; }
-  .app.day .toggle-track.on .toggle-thumb { background: #4f46e5; }
+  .app.day .toggle-track.on { background: #d1d5db; border-color: #c4c8d0; }
+  .app.day .toggle-track.on .toggle-thumb { background: #6b7280; }
   .toggle-thumb { position: absolute; top: 2px; left: 2px; width: 10px; height: 10px; border-radius: 50%; background: var(--text-secondary); transition: transform 0.2s cubic-bezier(0.16,1,0.3,1), background 0.2s; }
   .toggle-track.on .toggle-thumb { transform: translateX(12px); background: #fff; }
 

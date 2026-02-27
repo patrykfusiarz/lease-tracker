@@ -686,7 +686,7 @@ const css = `
   .status-option.flashing { animation: statusFlash 0.3s ease; }
   .status-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
   .status-cell { display: flex; align-items: center; gap: 5px; flex-wrap: nowrap; overflow: hidden; }
-  .signal-tag { display: inline-flex; align-items: center; font-size: 9.5px; font-weight: 600; padding: 1px 6px; border-radius: 3px; white-space: nowrap; letter-spacing: 0.1px; flex-shrink: 0; }
+  .signal-tag { display: inline-flex; align-items: center; font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 4px; white-space: nowrap; letter-spacing: 0.1px; flex-shrink: 0; border: 1px solid transparent; }
   .signal-tag.miles { background: rgba(248,113,113,0.12); color: #f87171; border: 1px solid rgba(248,113,113,0.25); }
   .signal-tag.miles-warn { background: rgba(251,191,36,0.12); color: #f59e0b; border: 1px solid rgba(251,191,36,0.25); }
   .signal-tag.accident { background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
@@ -1249,7 +1249,7 @@ export default function LeaseTracker() {
     try { const saved = localStorage.getItem('lt_theme'); return saved !== null ? saved === 'day' : true; } catch { return true; }
   });
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [density, setDensity] = useState("comfortable"); // compact | comfortable
+  const [density, setDensity] = useState(() => { try { return JSON.parse(localStorage.getItem("lt-prefs") || "{}").density || "comfortable"; } catch { return "comfortable"; } });
   const [flashingStatus, setFlashingStatus] = useState(null);
   const [themeAnimating, setThemeAnimating] = useState(false);
   const [densityOpen, setDensityOpen] = useState(false);
@@ -1799,7 +1799,7 @@ export default function LeaseTracker() {
                 {densityOpen && (
                   <div className="density-menu">
                     {["compact","comfortable"].map(d => (
-                      <div key={d} className={`density-option ${density === d ? "active" : ""}`} onClick={() => { setDensity(d); setDensityOpen(false); }}>
+                      <div key={d} className={`density-option ${density === d ? "active" : ""}`} onClick={() => { setDensity(d); setDensityOpen(false); try { const p = JSON.parse(localStorage.getItem("lt-prefs") || "{}"); localStorage.setItem("lt-prefs", JSON.stringify({ ...p, density: d })); } catch {} }}>
                         {d.charAt(0).toUpperCase() + d.slice(1)}
                         {density === d && <Check size={11} strokeWidth={2.5} />}
                       </div>
@@ -2111,27 +2111,25 @@ export default function LeaseTracker() {
                       </div>
                       </div>
 
-                      {/* Accident flag */}
-                      <div
-                        className="accident-toggle"
-                        onClick={async () => {
-                          if (!editMode) return;
-                          setEditForm(p => ({ ...p, hasAccident: !p.hasAccident }));
-                        }}
-                        style={{ borderTop: "1px solid var(--border-main)", opacity: editMode ? 1 : 1, cursor: editMode ? "pointer" : "default" }}
-                      >
-                        <div className={`accident-checkbox${editMode && editForm.hasAccident ? " checked" : !editMode && c.hasAccident ? " checked" : ""}`}>
-                          {((editMode ? editForm.hasAccident : c.hasAccident)) && (
-                            <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
-                              <path d="M1.5 4.5l2.5 2.5 3.5-4" stroke="#ef4444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
-                          )}
+                      {/* Accident flag — only visible in edit mode or if flagged */}
+                      {(editMode || c.hasAccident) && (
+                        <div
+                          className="accident-toggle"
+                          onClick={() => { if (editMode) setEditForm(p => ({ ...p, hasAccident: !p.hasAccident })); }}
+                          style={{ borderTop: "1px solid var(--border-main)", cursor: editMode ? "pointer" : "default" }}
+                        >
+                          <div className={`accident-checkbox${(editMode ? editForm.hasAccident : c.hasAccident) ? " checked" : ""}`}>
+                            {(editMode ? editForm.hasAccident : c.hasAccident) && (
+                              <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
+                                <path d="M1.5 4.5l2.5 2.5 3.5-4" stroke="#ef4444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
+                            )}
+                          </div>
+                          <span className="accident-label" style={{ color: (editMode ? editForm.hasAccident : c.hasAccident) ? (isDayMode ? "#dc2626" : "#ef4444") : undefined }}>
+                            {(editMode ? editForm.hasAccident : c.hasAccident) ? "Accident reported" : "No accident on record"}
+                          </span>
                         </div>
-                        <span className="accident-label" style={{ color: (editMode ? editForm.hasAccident : c.hasAccident) ? (isDayMode ? "#dc2626" : "#ef4444") : undefined }}>
-                          {(editMode ? editForm.hasAccident : c.hasAccident) ? "Accident reported" : "No accident on record"}
-                          {!editMode && <span style={{ fontSize: 10.5, color: "var(--text-muted)", marginLeft: 6 }}>Edit to change</span>}
-                        </span>
-                      </div>
+                      )}
                     </>
                   );
                 })()}

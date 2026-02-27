@@ -856,9 +856,12 @@ const css = `
   .toast-dot.error   { background: #f87171; box-shadow: 0 0 6px rgba(248,113,113,0.6); }
   .toast-dot.info    { background: #60a5fa; box-shadow: 0 0 6px rgba(96,165,250,0.6); }
   .toast-dot.warning { background: #fbbf24; box-shadow: 0 0 6px rgba(251,191,36,0.6); }
-  .toast-message { flex: 1; font-size: 12px; font-weight: 400; color: rgba(255,255,255,0.82); line-height: 1; letter-spacing: -0.1px; white-space: nowrap; }
-  .toast-container.day .toast-message { color: #1f2937; }
-  .toast-progress { position: absolute; bottom: 0; left: 0; height: 1.5px; border-radius: 0 1px 0 10px; animation: toastProgress 3s linear forwards; }
+  .toast-body { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .toast-name { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.95); letter-spacing: -0.1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .toast-detail { font-size: 11px; font-weight: 400; color: rgba(255,255,255,0.55); letter-spacing: -0.1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .toast-container.day .toast-name { color: #111827; }
+  .toast-container.day .toast-detail { color: #6b7280; }
+  .toast-progress { position: absolute; bottom: 0; left: 0; height: 1.5px; border-radius: 0 1px 0 10px; animation: toastProgress 5s linear forwards; }
   .toast-progress.success { background: linear-gradient(90deg, #34d399, transparent); }
   .toast-progress.error   { background: linear-gradient(90deg, #f87171, transparent); }
   .toast-progress.info    { background: linear-gradient(90deg, #60a5fa, transparent); }
@@ -919,15 +922,15 @@ function formatDollar(val) {
 function useToast() {
   const [toasts, setToasts] = useState([]);
 
-  const addToast = useCallback((message, type = "success") => {
+  const addToast = useCallback((message, type = "success", detail = null) => {
     const id = uid();
-    setToasts(prev => [...prev, { id, message, type, leaving: false }]);
+    setToasts(prev => [...prev, { id, message, detail, type, leaving: false }]);
     setTimeout(() => {
       setToasts(prev => prev.map(t => t.id === id ? { ...t, leaving: true } : t));
       setTimeout(() => {
         setToasts(prev => prev.filter(t => t.id !== id));
       }, 200);
-    }, 3000);
+    }, 5000);
   }, []);
 
   return { toasts, addToast };
@@ -947,7 +950,10 @@ function ToastContainer({ toasts, isDayMode }) {
       {toasts.map(t => (
         <div key={t.id} className={`toast${t.leaving ? " leaving" : ""}`}>
           <div className={`toast-dot ${t.type}`} />
-          <span className="toast-message">{t.message}</span>
+          <div className="toast-body">
+            <span className="toast-name">{t.message}</span>
+            {t.detail && <span className="toast-detail">{t.detail}</span>}
+          </div>
           <div className={`toast-progress ${t.type}`} />
         </div>
       ))}
@@ -1177,9 +1183,9 @@ export default function LeaseTracker() {
     dispatch({ type: "SAVE_NOTE", id: selected, text: noteDraft.trim(), savedAt, entryId });
     setNoteDraft("");
     setNoteSaved(true);
-    addToast("Note saved");
+    addToast(snapCustomer?.name || "Customer", "success", "Note Added");
     setTimeout(() => setNoteSaved(false), 2000);
-  }, [selected, noteDraft, user, addToast]);
+  }, [selected, noteDraft, user, addToast, snapCustomer]);
 
   // ── Edit ──
 
@@ -1245,12 +1251,32 @@ export default function LeaseTracker() {
       incentive_exp:     updates.incentiveExp === "—" ? null : updates.incentiveExp,
     }).eq("id", selected);
     setEditSaving(false);
-    if (error) { addToast("Failed to save — try again", "error"); return; }
+    if (error) { addToast("Save Failed", "error", "Please try again"); return; }
+    // Build a human-readable summary of what changed
+    const FIELD_LABELS = {
+      name: "Name", year: "Year", model: "Model", trim: "Trim", bank: "Bank",
+      term: "Lease Term", leaseEnd: "Lease End", milesYearly: "Miles / Year",
+      milesTerm: "Miles / Term", currentMiles: "Odometer", monthlyPayment: "Monthly Payment",
+      downPayment: "Down Payment", tradeEquity: "Trade Equity",
+      privateIncentive: "Incentive", incentiveExp: "Incentive Expiry",
+    };
+    const changed = Object.keys(FIELD_LABELS).filter(k => {
+      const oldVal = String(snapCustomer?.[k] ?? "").replace(/,/g,"").replace(/—/g,"");
+      const newVal = String(updates[k] ?? "").replace(/,/g,"").replace(/—/g,"");
+      return oldVal !== newVal && newVal !== "";
+    });
+    const changeStr = changed.length === 0
+      ? "Updated"
+      : changed.length === 1
+      ? `${FIELD_LABELS[changed[0]]} Updated`
+      : changed.length === 2
+      ? `${FIELD_LABELS[changed[0]]} & ${FIELD_LABELS[changed[1]]} Updated`
+      : `${changed.length} Fields Updated`;
     dispatch({ type: "UPDATE_CUSTOMER", id: selected, updates });
     setEditMode(false);
     setEditSaved(true);
     setTimeout(() => setEditSaved(false), 2000);
-    addToast(`${updates.name} saved`);
+    addToast(updates.name, "success", changeStr);
   }, [selected, editForm, snapCustomer, addToast, editSaving]);
 
   // ── Add modal ──
@@ -1327,7 +1353,7 @@ export default function LeaseTracker() {
       setEditMode(false);
       setEditSaved(false);
       setPanelState("open");
-      addToast(`${customer.name} added`);
+      addToast(customer.name, "success", "Added");
     }
   };
 
@@ -1340,7 +1366,7 @@ export default function LeaseTracker() {
     await supabase.from("customers").delete().eq("id", confirmDel);
     dispatch({ type: "DELETE_CUSTOMER", id: confirmDel });
     setConfirmDel(null);
-    addToast(`${delName} deleted`, "info");
+    addToast(delName, "info", "Deleted");
   };
 
   // ── Sort ──
@@ -1683,16 +1709,9 @@ export default function LeaseTracker() {
                           if (active) return; // already this status
                           const prevLabel = statusMeta(c.status || "early").label;
                           const { error: sErr } = await supabase.from("customers").update({ status: s.key }).eq("id", selected);
-                          if (sErr) { addToast("Failed to update status", "error"); return; }
+                          if (sErr) { addToast("Update Failed", "error", "Status could not be changed"); return; }
                           dispatch({ type: "SET_STATUS", id: selected, status: s.key });
-                          // Auto-log status change as a note
-                          const now = new Date();
-                          const savedAt = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) + " · " + now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-                          const entryId = uid();
-                          const noteText = `Status changed: ${prevLabel} → ${s.label}`;
-                          const { error: nErr } = await supabase.from("notes").insert({ id: entryId, customer_id: selected, user_id: user.id, text: noteText, saved_at: savedAt });
-                          if (!nErr) dispatch({ type: "SAVE_NOTE", id: selected, text: noteText, savedAt, entryId });
-                          addToast(`Status → ${s.label}`);
+                          addToast(c.name, "success", `→ ${s.label}`);
                           setFlashingStatus(s.key);
                           setTimeout(() => setFlashingStatus(null), 350);
                         }}

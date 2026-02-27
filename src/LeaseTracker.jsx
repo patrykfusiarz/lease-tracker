@@ -1167,8 +1167,8 @@ const css = `
   }
   .calc-total-label { font-size: 14px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.3px; }
   .calc-total-value {
-    font-size: 22px; font-weight: 700; color: var(--text-primary);
-    letter-spacing: -0.8px; font-variant-numeric: tabular-nums;
+    font-size: 15px; font-weight: 700; color: var(--text-primary);
+    letter-spacing: -0.4px; font-variant-numeric: tabular-nums;
   }
   .app.day .calc-total-value { color: #111827; }
 

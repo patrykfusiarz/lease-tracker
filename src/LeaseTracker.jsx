@@ -1055,58 +1055,131 @@ const css = `
   }
   .calc-title { font-size: 16px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.3px; }
   .calc-body {
-    flex: 1; overflow-y: auto; padding: 20px;
-    display: flex; gap: 16px; align-items: flex-start;
+    flex: 1; overflow-y: auto; padding: 24px;
+    display: flex; gap: 18px; align-items: flex-start;
   }
   .calc-body::-webkit-scrollbar { width: 4px; }
   .calc-body::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 3px; }
+
+  /* Card */
   .calc-card {
-    flex: 1; background: var(--bg-card); border: 1px solid var(--border-card);
-    border-radius: 10px; overflow: hidden; min-width: 0;
+    flex: 1; min-width: 0;
+    background: var(--bg-card); border: 1px solid var(--border-card);
+    border-radius: 12px; overflow: hidden;
+    display: flex; flex-direction: column;
   }
   .calc-card-header {
-    padding: 12px 16px; border-bottom: 1px solid var(--border-main);
-    background: var(--bg-input); text-align: center;
+    padding: 14px 18px 13px;
+    border-bottom: 1px solid var(--border-main);
+    display: flex; align-items: center; justify-content: space-between;
   }
-  .calc-card-title { font-size: 13px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.1px; }
-  .calc-table { width: 100%; border-collapse: collapse; }
-  .calc-row { border-bottom: 1px solid var(--border-main); }
-  .calc-row:last-child { border-bottom: none; }
-  .calc-label {
-    padding: 9px 14px; font-size: 12.5px; color: var(--text-cell);
-    width: 55%; vertical-align: middle;
+  .calc-card-title {
+    font-size: 13px; font-weight: 600; color: var(--text-primary);
+    letter-spacing: -0.1px;
   }
-  .calc-label.italic { font-style: italic; color: var(--text-secondary); }
-  .calc-label.bold { font-weight: 600; color: var(--text-primary); }
-  .calc-value {
-    padding: 9px 14px; font-size: 12.5px; color: var(--text-cell);
-    text-align: right; vertical-align: middle; font-variant-numeric: tabular-nums;
+  .calc-reset-btn {
+    font-size: 11px; font-family: 'Inter', sans-serif;
+    color: var(--text-secondary); background: none; border: none;
+    cursor: pointer; padding: 3px 0; transition: color 0.1s;
+    letter-spacing: 0.1px;
   }
-  .calc-value.bold { font-weight: 600; color: var(--text-primary); }
-  .calc-row.subtotal { background: var(--bg-input); }
-  .calc-row.total-row { background: var(--bg-input); border-top: 2px solid var(--border-input); }
-  .calc-row.total-row .calc-label,
-  .calc-row.total-row .calc-value { font-size: 13.5px; font-weight: 700; color: var(--text-primary); padding: 12px 14px; }
-  .calc-input-cell { padding: 5px 10px; text-align: right; }
-  .calc-input {
-    background: var(--bg-input-meta); border: 1px solid var(--border-input);
-    border-radius: 5px; padding: 4px 8px; font-size: 12.5px;
-    font-family: 'Inter', sans-serif; color: var(--text-primary);
-    outline: none; width: 110px; text-align: right;
-    transition: border-color 0.15s, box-shadow 0.15s;
+  .calc-reset-btn:hover { color: var(--text-primary); }
+
+  /* Rows */
+  .calc-rows { padding: 6px 0; }
+  .calc-line {
+    display: flex; align-items: center;
+    padding: 0 18px; min-height: 42px;
+    border-bottom: 1px solid var(--border-main);
+    transition: background 0.08s;
+  }
+  .calc-line:last-child { border-bottom: none; }
+  .calc-line.input-line:focus-within { background: var(--bg-hover); }
+  .calc-line.divider-line {
+    background: var(--bg-input); min-height: 36px;
+    border-top: 1px solid var(--border-input);
+    border-bottom: 1px solid var(--border-input);
+  }
+  .calc-line-label {
+    flex: 1; font-size: 12.5px; color: var(--text-secondary);
+    font-weight: 400; letter-spacing: -0.1px; display: flex; align-items: center; gap: 7px;
+  }
+  .calc-line-label.strong { color: var(--text-primary); font-weight: 500; }
+  .calc-line-label.muted { font-style: italic; }
+  .calc-line-value {
+    font-size: 13px; color: var(--text-primary); font-weight: 400;
+    font-variant-numeric: tabular-nums; letter-spacing: -0.2px;
+    text-align: right; min-width: 90px;
+  }
+  .calc-line-value.strong { font-weight: 600; }
+  .calc-line-value.muted { color: var(--text-secondary); }
+
+  /* Inline input */
+  .calc-field {
+    display: flex; align-items: center;
+    background: var(--bg-input); border: 1px solid var(--border-input);
+    border-radius: 7px; height: 30px; min-width: 110px;
+    overflow: hidden; transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .calc-field:focus-within { border-color: var(--border-input-focus); }
+  .app.day .calc-field:focus-within { box-shadow: 0 0 0 3px rgba(99,102,241,0.08); }
+  .calc-field-prefix {
+    padding: 0 6px 0 9px; font-size: 12px;
+    color: var(--text-secondary); pointer-events: none; flex-shrink: 0;
+  }
+  .calc-field input {
+    background: transparent; border: none; outline: none;
+    font-size: 13px; font-family: 'Inter', sans-serif;
+    color: var(--text-primary); width: 80px;
+    text-align: right; padding: 0 9px 0 0;
+    font-variant-numeric: tabular-nums; letter-spacing: -0.2px;
+  }
+  .calc-field input::placeholder { color: var(--text-muted); }
+
+  /* Tax rate inline edit */
+  .calc-tax-rate {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.1px;
+    color: var(--border-input-focus); background: none; border: none;
+    cursor: pointer; padding: 2px 5px; border-radius: 4px;
+    transition: background 0.1s;
+    font-family: 'Inter', sans-serif;
+  }
+  .calc-tax-rate:hover { background: var(--bg-hover-sm); }
+  .calc-tax-field {
+    display: inline-flex; align-items: center; gap: 2px;
+    background: var(--bg-input); border: 1px solid var(--border-input-focus);
+    border-radius: 5px; padding: 1px 5px;
+  }
+  .calc-tax-field input {
+    width: 36px; background: transparent; border: none; outline: none;
+    font-size: 12px; font-family: 'Inter', sans-serif;
+    color: var(--text-primary); text-align: right;
     font-variant-numeric: tabular-nums;
   }
-  .calc-input:focus { border-color: var(--border-input-focus); }
-  .app.day .calc-input:focus { box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
-  .calc-reset-btn {
-    display: flex; align-items: center; gap: 5px;
-    padding: 0 10px; height: 26px; border-radius: 6px;
-    border: 1px solid var(--border-input); background: transparent;
-    font-size: 11.5px; font-family: 'Inter', sans-serif;
-    color: var(--text-secondary); cursor: pointer;
-    transition: background 0.1s, color 0.1s;
+  .calc-tax-field span { font-size: 11px; color: var(--text-secondary); }
+
+  /* Total row */
+  .calc-total-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 18px; margin: 0;
+    background: var(--bg-input);
+    border-top: 2px solid var(--border-input);
   }
-  .calc-reset-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+  .calc-total-label { font-size: 14px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.3px; }
+  .calc-total-value {
+    font-size: 22px; font-weight: 700; color: var(--text-primary);
+    letter-spacing: -0.8px; font-variant-numeric: tabular-nums;
+  }
+  .app.day .calc-total-value { color: #111827; }
+
+  /* Trade badge */
+  .calc-trade-badge {
+    font-size: 9.5px; font-weight: 600; letter-spacing: 0.2px;
+    color: var(--border-input-focus); background: rgba(74,143,212,0.1);
+    border: 1px solid rgba(74,143,212,0.2); border-radius: 4px;
+    padding: 1px 5px;
+  }
+  .app.day .calc-trade-badge { color: #4f46e5; background: rgba(99,102,241,0.08); border-color: rgba(99,102,241,0.2); }
 `;
 
 // ── Animated Number ───────────────────────────────────────────────────────────
@@ -1349,7 +1422,30 @@ function fmt(n) {
   return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-// isNew: true = New Car (appearance, tire fee, lux tax); false = Used Car (none of those)
+function MoneyField({ value, onChange, placeholder, autoFocus }) {
+  return (
+    <div className="calc-field">
+      <span className="calc-field-prefix">$</span>
+      <input
+        value={value}
+        placeholder={placeholder || '0.00'}
+        onChange={e => onChange(e.target.value)}
+        onFocus={e => e.target.select()}
+        autoFocus={autoFocus}
+      />
+    </div>
+  );
+}
+
+function CalcLine({ label, labelClass, value, valueClass, valueStyle, children, lineClass }) {
+  return (
+    <div className={`calc-line${lineClass ? ' ' + lineClass : ''}`}>
+      <span className={`calc-line-label${labelClass ? ' ' + labelClass : ''}`}>{label}</span>
+      {children || <span className={`calc-line-value${valueClass ? ' ' + valueClass : ''}`} style={valueStyle}>{value}</span>}
+    </div>
+  );
+}
+
 function CarCalc({ title, isNew, isDayMode }) {
   const [salePrice,    setSalePrice]    = useState('');
   const [appearance,   setAppearance]   = useState(isNew ? '495' : '');
@@ -1372,129 +1468,101 @@ function CarCalc({ title, isNew, isDayMode }) {
   const total    = taxable + salesTax + tireFee + reg + luxTax;
 
   const reset = () => {
-    setSalePrice('');
-    setAppearance(isNew ? '495' : '');
-    setTrade('');
-    setRegistration('');
-    setTaxRateStr(DEFAULT_TAX);
+    setSalePrice(''); setAppearance(isNew ? '495' : '');
+    setTrade(''); setRegistration(''); setTaxRateStr(DEFAULT_TAX);
   };
-
-  const inputCell = (value, setter, placeholder) => (
-    <td className="calc-input-cell">
-      <input
-        className="calc-input"
-        value={value}
-        placeholder={placeholder || '0.00'}
-        onChange={e => setter(e.target.value)}
-        onFocus={e => e.target.select()}
-      />
-    </td>
-  );
-
-  const staticCell = (val, opts = {}) => (
-    <td className={`calc-value${opts.bold ? ' bold' : ''}`} style={opts.style}>{fmt(val)}</td>
-  );
 
   return (
     <div className="calc-card">
-      <div className="calc-card-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+
+      {/* Header */}
+      <div className="calc-card-header">
         <span className="calc-card-title">{title}</span>
         <button className="calc-reset-btn" onClick={reset}>Reset</button>
       </div>
-      <table className="calc-table">
-        <tbody>
-          {/* Final Sale Price */}
-          <tr className="calc-row">
-            <td className="calc-label bold">Final Sale Price</td>
-            {inputCell(salePrice, setSalePrice, '0.00')}
-          </tr>
-          {/* Appearance — New Car only */}
-          {isNew && (
-            <tr className="calc-row">
-              <td className="calc-label">Appearance Package</td>
-              {inputCell(appearance, setAppearance, '495.00')}
-            </tr>
-          )}
-          {/* Trade */}
-          <tr className="calc-row">
-            <td className="calc-label italic">Trade</td>
-            {inputCell(trade, setTrade, '0.00')}
-          </tr>
-          {/* NJ Car — auto-switches with trade */}
-          <tr className="calc-row">
-            <td className="calc-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+
+      <div className="calc-rows">
+
+        {/* ── INPUTS ── */}
+        <CalcLine label="Sale Price" labelClass="strong" lineClass="input-line">
+          <MoneyField value={salePrice} onChange={setSalePrice} placeholder="0.00" autoFocus={false} />
+        </CalcLine>
+
+        {isNew && (
+          <CalcLine label="Appearance" lineClass="input-line">
+            <MoneyField value={appearance} onChange={setAppearance} placeholder="495.00" />
+          </CalcLine>
+        )}
+
+        <CalcLine label="Trade" labelClass="muted" lineClass="input-line">
+          <MoneyField value={trade} onChange={setTrade} placeholder="0.00" />
+        </CalcLine>
+
+        {/* ── FIXED FEES ── */}
+        <CalcLine
+          label={
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               NJ Car
-              {tr > 0 && <span style={{ fontSize: 9.5, color: isDayMode ? '#d97706' : '#f59e0b', fontWeight: 600 }}>w/ trade</span>}
-            </td>
-            {staticCell(njCar)}
-          </tr>
-          {/* Doc Fee */}
-          <tr className="calc-row">
-            <td className="calc-label">Doc Fee</td>
-            {staticCell(DOC_FEE)}
-          </tr>
-          {/* Taxable */}
-          <tr className="calc-row subtotal">
-            <td className="calc-label bold">Taxable</td>
-            <td className="calc-value bold">{fmt(taxable)}</td>
-          </tr>
-          {/* Sales Tax — editable rate */}
-          <tr className="calc-row">
-            <td className="calc-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              {tr > 0 && <span className="calc-trade-badge">w/ trade</span>}
+            </span>
+          }
+          value={fmt(njCar)} valueClass="muted"
+        />
+        <CalcLine label="Doc Fee" value={fmt(DOC_FEE)} valueClass="muted" />
+
+        {/* ── TAXABLE SUBTOTAL ── */}
+        <CalcLine label="Taxable" labelClass="strong" value={fmt(taxable)} valueClass="strong" lineClass="divider-line" />
+
+        {/* ── TAX with editable rate ── */}
+        <CalcLine
+          label={
+            <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
               Sales Tax
               {editingTax ? (
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                <span className="calc-tax-field">
                   <input
-                    style={{
-                      width: 44, background: 'var(--bg-input-meta)', border: '1px solid var(--border-input-focus)',
-                      borderRadius: 4, padding: '1px 4px', fontSize: 11.5, color: 'var(--text-primary)',
-                      fontFamily: 'Inter, sans-serif', outline: 'none', textAlign: 'right',
-                    }}
                     value={taxRateStr}
                     onChange={e => setTaxRateStr(e.target.value)}
                     onBlur={() => setEditingTax(false)}
-                    onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') setEditingTax(false); }}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); setEditingTax(false); } }}
                     autoFocus
                     onFocus={e => e.target.select()}
                   />
-                  <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>%</span>
+                  <span>%</span>
                 </span>
               ) : (
-                <span
-                  onClick={() => setEditingTax(true)}
-                  style={{ fontSize: 10.5, color: 'var(--border-input-focus)', cursor: 'pointer', fontWeight: 500, letterSpacing: 0.1 }}
-                  title="Click to edit rate"
-                >{taxRateStr}%</span>
+                <button className="calc-tax-rate" onClick={() => setEditingTax(true)} title="Click to change rate">
+                  {taxRateStr}%
+                </button>
               )}
-            </td>
-            <td className="calc-value">{fmt(salesTax)}</td>
-          </tr>
-          {/* Tire Fee — New Car only */}
-          {isNew && (
-            <tr className="calc-row">
-              <td className="calc-label">Tire Fee</td>
-              {staticCell(tireFee)}
-            </tr>
-          )}
-          {/* Registration */}
-          <tr className="calc-row">
-            <td className="calc-label">Registration</td>
-            {inputCell(registration, setRegistration, '0.00')}
-          </tr>
-          {/* Lux Tax — New Car only */}
-          {isNew && (
-            <tr className="calc-row">
-              <td className="calc-label">Lux Tax</td>
-              {staticCell(luxTax, { style: luxTax > 0 ? { color: isDayMode ? '#d97706' : '#f59e0b' } : undefined })}
-            </tr>
-          )}
-          {/* Total */}
-          <tr className="calc-row total-row">
-            <td className="calc-label bold">Total</td>
-            <td className="calc-value bold">{fmt(total)}</td>
-          </tr>
-        </tbody>
-      </table>
+            </span>
+          }
+          value={fmt(salesTax)}
+        />
+
+        {isNew && <CalcLine label="Tire Fee" value={fmt(tireFee)} valueClass="muted" />}
+
+        {/* ── REGISTRATION input ── */}
+        <CalcLine label="Registration" lineClass="input-line">
+          <MoneyField value={registration} onChange={setRegistration} placeholder="0.00" />
+        </CalcLine>
+
+        {isNew && (
+          <CalcLine
+            label="Lux Tax"
+            value={fmt(luxTax)}
+            valueStyle={luxTax > 0 ? { color: isDayMode ? '#d97706' : '#f59e0b' } : undefined}
+            valueClass={luxTax === 0 ? 'muted' : ''}
+          />
+        )}
+      </div>
+
+      {/* ── TOTAL ── */}
+      <div className="calc-total-row">
+        <span className="calc-total-label">Total</span>
+        <span className="calc-total-value">{fmt(total)}</span>
+      </div>
+
     </div>
   );
 }

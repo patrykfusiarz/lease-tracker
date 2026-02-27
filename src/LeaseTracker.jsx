@@ -34,8 +34,9 @@ const STATUSES = [
   { key: "lost",          label: "Lost Deal",    color: "#9a4050", order: 7 },
 ];
 
+const STATUS_MAP = new Map(STATUSES.map(s => [s.key, s]));
 function statusMeta(key) {
-  return STATUSES.find(s => s.key === key) || STATUSES[0];
+  return STATUS_MAP.get(key) || STATUSES[0];
 }
 const EMPTY_FORM = {
   name: "", year: "", model: "", trim: "", bank: "",

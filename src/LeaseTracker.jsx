@@ -2,7 +2,7 @@ import { useReducer, useMemo, useState, useEffect, useRef, useCallback } from "r
 import { useAuth } from "./auth";
 import { SettingsModal } from "./SettingsModal";
 import { supabase } from "./supabase";
-import { Layers, LogOut, UserPlus, X, ChevronsUpDown, ChevronUp, ChevronDown, Pencil, Check, Trash2, Sun, Moon, ChevronLeft, ChevronRight, AlignJustify, Settings, CalendarRange, BookUser, Phone, Plus } from "lucide-react";
+import { Layers, LogOut, UserPlus, X, ChevronsUpDown, ChevronUp, ChevronDown, Pencil, Check, Trash2, Sun, Moon, ChevronLeft, ChevronRight, AlignJustify, Settings, CalendarRange, Users, Plus } from "lucide-react";
 
 // ── CONSTANTS ─────────────────────────────────────────────────────────────────
 
@@ -1992,7 +1992,7 @@ export default function LeaseTracker() {
             </div>
             <div className="sidebar-section-label">Tools</div>
             <div className={`nav-item ${activeView === "directory" ? "active" : ""}`} onClick={() => setActiveView("directory")}>
-              <span className="nav-icon"><BookUser size={14} strokeWidth={1.75} /></span>
+              <span className="nav-icon"><Users size={14} strokeWidth={1.75} /></span>
               <span className="nav-item-label">Directory</span>
             </div>
           </div>

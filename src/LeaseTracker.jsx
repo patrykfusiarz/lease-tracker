@@ -2,7 +2,7 @@ import { useReducer, useMemo, useState, useEffect, useRef, useCallback } from "r
 import { useAuth } from "./auth";
 import { SettingsModal } from "./SettingsModal";
 import { supabase } from "./supabase";
-import { Layers, LogOut, UserPlus, X, ChevronsUpDown, ChevronUp, ChevronDown, Pencil, Check, Trash2, Sun, Moon, ChevronLeft, ChevronRight, AlignJustify, Settings, CalendarRange } from "lucide-react";
+import { Layers, LogOut, UserPlus, X, ChevronsUpDown, ChevronUp, ChevronDown, Pencil, Check, Trash2, Sun, Moon, ChevronLeft, ChevronRight, AlignJustify, Settings, CalendarRange, BookUser, Phone, Plus } from "lucide-react";
 
 // ── CONSTANTS ─────────────────────────────────────────────────────────────────
 
@@ -982,6 +982,62 @@ const css = `
   .timeline-empty-state-title { font-size: 13px; font-weight: 500; color: var(--text-tertiary); }
   .timeline-empty-state-sub { font-size: 12px; color: var(--text-muted); }
 
+  /* ── DIRECTORY VIEW ── */
+  .directory-panel {
+    flex: 1; display: flex; flex-direction: column; overflow: hidden;
+    background: var(--bg-panel); border-radius: 10px;
+    border: 1px solid var(--border-card);
+    box-shadow: 0 0 0 1px var(--shadow-panel), 0 8px 32px var(--shadow-panel);
+    animation: fadeIn 0.18s ease;
+  }
+  .app.day .directory-panel { border: 1px solid #e8eaef; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+  .directory-topbar {
+    display: flex; align-items: center; gap: 10px; padding: 0 18px;
+    height: 46px; border-bottom: 1px solid var(--border-main);
+    flex-shrink: 0; background: var(--bg-panel); border-radius: 10px 10px 0 0;
+  }
+  .directory-title { font-size: 16px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.3px; }
+  .directory-body { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+  .directory-body::-webkit-scrollbar { width: 4px; }
+  .directory-body::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 3px; }
+  .dir-dept-label { font-size: 10px; font-weight: 600; color: var(--text-secondary); letter-spacing: 0.4px; text-transform: uppercase; padding: 4px 2px 6px; margin-top: 8px; }
+  .dir-dept-label:first-child { margin-top: 0; }
+  .dir-card {
+    background: var(--bg-card); border: 1px solid var(--border-card);
+    border-radius: 8px; padding: 12px 14px;
+    display: flex; align-items: center; gap: 14px;
+    transition: border-color 0.1s, background 0.1s;
+  }
+  .dir-card:hover { border-color: var(--border-input); background: var(--bg-hover); }
+  .dir-avatar {
+    width: 34px; height: 34px; border-radius: 8px;
+    background: var(--bg-hover-sm); border: 1px solid var(--border-input);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; color: var(--text-secondary);
+    flex-shrink: 0; letter-spacing: 0.3px;
+  }
+  .dir-info { flex: 1; min-width: 0; }
+  .dir-name { font-size: 13px; font-weight: 500; color: var(--text-primary); letter-spacing: -0.1px; }
+  .dir-role { font-size: 11.5px; color: var(--text-secondary); margin-top: 1px; }
+  .dir-ext-wrap { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  .dir-ext {
+    font-size: 13px; font-weight: 500; color: var(--text-primary);
+    background: var(--bg-input); border: 1px solid var(--border-input);
+    border-radius: 6px; padding: 4px 10px; letter-spacing: 0.5px;
+    font-variant-numeric: tabular-nums;
+  }
+  .dir-phone { font-size: 12px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+  .dir-actions { display: flex; gap: 4px; opacity: 0; transition: opacity 0.1s; }
+  .dir-card:hover .dir-actions { opacity: 1; }
+  .dir-action-btn { display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 5px; border: 1px solid var(--border-input); background: transparent; cursor: pointer; color: var(--text-secondary); transition: all 0.1s; }
+  .dir-action-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+  .dir-action-btn.danger:hover { background: #221414; border-color: #3a1a1a; color: #a83838; }
+  .app.day .dir-action-btn.danger:hover { background: #fef2f2; border-color: #fecaca; color: #dc2626; }
+  .dir-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; opacity: 0.5; }
+  .dir-empty-title { font-size: 13px; font-weight: 500; color: var(--text-tertiary); }
+  .dir-empty-sub { font-size: 12px; color: var(--text-muted); }
+  .dir-modal { background: var(--bg-panel); border: 1px solid var(--border-card); border-radius: 14px; width: 420px; overflow: hidden; box-shadow: 0 32px 80px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.04); animation: modalIn 0.15s cubic-bezier(0.16,1,0.3,1); }
+  .app.day .dir-modal { box-shadow: 0 8px 40px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.05); border-color: #e8eaef; }
 `;
 
 // ── Animated Number ───────────────────────────────────────────────────────────
@@ -1206,11 +1262,188 @@ function TimelineView({ customers, isDayMode, openPanel, openModal }) {
 
 
 
+// ── DIRECTORY VIEW ────────────────────────────────────────────────────────────
+
+const DIR_STORAGE_KEY = 'lt-directory';
+
+function loadDirectory() {
+  try { return JSON.parse(localStorage.getItem(DIR_STORAGE_KEY) || '[]'); } catch { return []; }
+}
+function saveDirectory(entries) {
+  try { localStorage.setItem(DIR_STORAGE_KEY, JSON.stringify(entries)); } catch {}
+}
+
+const EMPTY_DIR_FORM = { name: '', role: '', department: '', extension: '', directLine: '' };
+
+function DirectoryView({ isDayMode }) {
+  const [entries,    setEntries]    = useState(loadDirectory);
+  const [search,     setSearch]     = useState('');
+  const [showModal,  setShowModal]  = useState(false);
+  const [editId,     setEditId]     = useState(null);
+  const [form,       setForm]       = useState(EMPTY_DIR_FORM);
+  const [confirmDel, setConfirmDel] = useState(null);
+
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase();
+    return q
+      ? entries.filter(e => [e.name, e.role, e.department, e.extension, e.directLine].join(' ').toLowerCase().includes(q))
+      : entries;
+  }, [entries, search]);
+
+  // Group by department, ungrouped at bottom
+  const grouped = useMemo(() => {
+    const map = new Map();
+    filtered.forEach(e => {
+      const dept = e.department?.trim() || 'Other';
+      if (!map.has(dept)) map.set(dept, []);
+      map.get(dept).push(e);
+    });
+    // Sort departments alphabetically, 'Other' last
+    return [...map.entries()].sort(([a],[b]) => {
+      if (a === 'Other') return 1;
+      if (b === 'Other') return -1;
+      return a.localeCompare(b);
+    });
+  }, [filtered]);
+
+  const initials = (name) => name.trim().split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
+
+  const openAdd = () => { setForm(EMPTY_DIR_FORM); setEditId(null); setShowModal(true); };
+  const openEdit = (e) => { setForm({ name: e.name, role: e.role, department: e.department, extension: e.extension, directLine: e.directLine }); setEditId(e.id); setShowModal(true); };
+
+  const handleSave = () => {
+    if (!form.name.trim()) return;
+    let updated;
+    if (editId) {
+      updated = entries.map(e => e.id === editId ? { ...e, ...form } : e);
+    } else {
+      updated = [...entries, { id: crypto.randomUUID(), ...form }];
+    }
+    setEntries(updated);
+    saveDirectory(updated);
+    setShowModal(false);
+    setForm(EMPTY_DIR_FORM);
+    setEditId(null);
+  };
+
+  const handleDelete = (id) => {
+    const updated = entries.filter(e => e.id !== id);
+    setEntries(updated);
+    saveDirectory(updated);
+    setConfirmDel(null);
+  };
+
+  const field = (label, key, placeholder, opts = {}) => (
+    <div className="modal-field" style={{ gridColumn: opts.full ? '1 / -1' : undefined }}>
+      <label>{label}</label>
+      <input
+        value={form[key]}
+        onChange={e => setForm(p => ({ ...p, [key]: e.target.value }))}
+        placeholder={placeholder}
+        onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') setShowModal(false); }}
+        autoFocus={opts.autoFocus}
+      />
+    </div>
+  );
+
+  return (
+    <>
+      <div className="directory-panel">
+        <div className="directory-topbar">
+          <span className="directory-title">Directory</span>
+          <div className="spacer" />
+          <input className="search-box" placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} />
+          <button className="btn-primary" onClick={openAdd}><Plus size={13} strokeWidth={2} />Add Person</button>
+        </div>
+
+        <div className="directory-body">
+          {filtered.length === 0 ? (
+            <div className="dir-empty">
+              <span className="dir-empty-title">{search ? 'No matches found' : 'No staff added yet'}</span>
+              <span className="dir-empty-sub">{search ? 'Try a different search' : 'Add your first staff member'}</span>
+            </div>
+          ) : grouped.map(([dept, people]) => (
+            <div key={dept}>
+              <div className="dir-dept-label">{dept}</div>
+              {people.map(e => (
+                <div key={e.id} className="dir-card" style={{ marginBottom: 6 }}>
+                  <div className="dir-avatar">{initials(e.name)}</div>
+                  <div className="dir-info">
+                    <div className="dir-name">{e.name}</div>
+                    {e.role && <div className="dir-role">{e.role}</div>}
+                  </div>
+                  <div className="dir-ext-wrap">
+                    {e.directLine && <span className="dir-phone">{e.directLine}</span>}
+                    {e.extension && (
+                      <span className="dir-ext" title="Extension">x{e.extension}</span>
+                    )}
+                  </div>
+                  <div className="dir-actions">
+                    <button className="dir-action-btn" title="Edit" onClick={() => openEdit(e)}><Pencil size={11} strokeWidth={2} /></button>
+                    <button className="dir-action-btn danger" title="Delete" onClick={() => setConfirmDel(e.id)}><Trash2 size={11} strokeWidth={2} /></button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Add/Edit modal */}
+      {showModal && (
+        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+          <div className="dir-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-topbar">
+              <span style={{ fontSize: 15, fontWeight: 500, color: 'var(--text-primary)', letterSpacing: '-0.2px' }}>{editId ? 'Edit Person' : 'Add Person'}</span>
+              <button className="modal-close" onClick={() => setShowModal(false)}><X size={14} strokeWidth={2} /></button>
+            </div>
+            <div className="modal-body">
+              <div className="modal-row cols-2">
+                {field('Name', 'name', 'Jane Smith', { autoFocus: true, full: false })}
+                {field('Role / Title', 'role', 'Sales Manager')}
+              </div>
+              <div className="modal-row cols-2">
+                {field('Department', 'department', 'Sales')}
+                {field('Extension', 'extension', '1042')}
+              </div>
+              <div className="modal-row cols-1">
+                {field('Direct Line', 'directLine', '(201) 555-0182', { full: true })}
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
+              <button className="btn-primary" onClick={handleSave} disabled={!form.name.trim()}>
+                {editId ? 'Save Changes' : 'Add Person'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirm */}
+      {confirmDel && (
+        <div className="confirm-overlay">
+          <div className="confirm-box">
+            <div className="confirm-title">Remove from directory?</div>
+            <div className="confirm-sub">This person will be permanently removed.</div>
+            <div className="confirm-actions">
+              <button className="btn-secondary" onClick={() => setConfirmDel(null)}>Cancel</button>
+              <button className="btn-danger" onClick={() => handleDelete(confirmDel)}>Remove</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+
+
 export default function LeaseTracker() {
   const { user, signOut } = useAuth();
   const { toasts, addToast } = useToast();
   const [showSettings, setShowSettings] = useState(false);
-  const [activeView, setActiveView] = useState("maturities"); // "maturities" | "timeline"
+  const [activeView, setActiveView] = useState("maturities"); // "maturities" | "timeline" | "directory"
   const [state,   dispatch] = useReducer(reducer, null, loadState);
   const { customers, notes } = state;
   const [dbLoading, setDbLoading] = useState(true);
@@ -1757,6 +1990,11 @@ export default function LeaseTracker() {
               <span className="nav-icon"><CalendarRange size={14} strokeWidth={1.75} /></span>
               <span className="nav-item-label">Timeline</span>
             </div>
+            <div className="sidebar-section-label">Tools</div>
+            <div className={`nav-item ${activeView === "directory" ? "active" : ""}`} onClick={() => setActiveView("directory")}>
+              <span className="nav-icon"><BookUser size={14} strokeWidth={1.75} /></span>
+              <span className="nav-item-label">Directory</span>
+            </div>
           </div>
 
           {/* Footer — logout + theme toggle + collapse toggle */}
@@ -1783,6 +2021,7 @@ export default function LeaseTracker() {
         {/* MAIN */}
         <div className="main-wrapper">
           {activeView === "timeline" ? <TimelineView customers={customers} isDayMode={isDayMode} openPanel={openPanel} openModal={openModal} /> : null}
+          {activeView === "directory" ? <DirectoryView isDayMode={isDayMode} /> : null}
           <div className="list-panel" style={{ display: activeView === "maturities" ? "flex" : "none" }}>
 
             <div className="topbar">

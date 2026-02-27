@@ -1514,12 +1514,6 @@ export default function LeaseTracker() {
                   </div>
                 )}
               </div>
-              <span className="kbd-hint" title="Keyboard: ↑↓ navigate · Enter edit · N new · Esc close">
-                <span className="kbd">↑↓</span>
-                <span className="kbd">Enter</span>
-                <span className="kbd">N</span>
-                <span className="kbd">Esc</span>
-              </span>
               <button className="btn-primary" onClick={openModal}><UserPlus size={13} strokeWidth={2} />New Customer</button>
             </div>
 

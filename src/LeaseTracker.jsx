@@ -249,8 +249,8 @@ function calcDaysLeft(dateStr) {
 }
 
 function formatTimeLeft(months, days) {
-  if (months < 1) return days <= 0 ? "Today" : `${days}d`;
-  return `${months} mo`;
+  if (months < 1) return days <= 0 ? "Today" : `${days} ${days === 1 ? "day" : "days"}`;
+  return `${months} ${months === 1 ? "month" : "months"}`;
 }
 
 function monthsColor(m, dayMode = false) {
@@ -603,7 +603,7 @@ const css = `
 
   /* ── TOPBAR ── */
   .topbar { display: flex; align-items: center; gap: 10px; padding: 0 18px; height: 46px; border-bottom: 1px solid var(--border-main); flex-shrink: 0; border-radius: 10px 10px 0 0; background: var(--bg-panel); }
-  .topbar-title { font-size: 13px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.2px; }
+  .topbar-title { font-size: 16px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.3px; }
   .spacer { flex: 1; }
 
   .search-box { background: var(--bg-input); border: 1px solid var(--border-input); border-radius: 6px; padding: 0 10px; height: 28px; font-size: 12px; font-family: 'Inter', sans-serif; color: var(--text-cell); width: 160px; outline: none; transition: border-color 0.2s, width 0.25s cubic-bezier(0.16,1,0.3,1), box-shadow 0.2s; }
@@ -885,7 +885,7 @@ const css = `
     height: 46px; border-bottom: 1px solid var(--border-main);
     flex-shrink: 0; background: var(--bg-panel); border-radius: 10px 10px 0 0;
   }
-  .timeline-title { font-size: 13px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.2px; }
+  .timeline-title { font-size: 16px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.3px; }
 
   .timeline-body {
     flex: 1; overflow-x: auto; overflow-y: hidden;
@@ -1109,7 +1109,7 @@ function TimelineView({ customers, isDayMode, openPanel, openModal }) {
   return (
     <div className="timeline-panel">
       <div className="timeline-topbar">
-        <span className="timeline-title">Lease End Timeline</span>
+        <span className="timeline-title">Timeline View</span>
         <div className="spacer" />
         <input
           className="search-box"
@@ -1770,7 +1770,7 @@ export default function LeaseTracker() {
           <div className="list-panel" style={{ display: activeView === "maturities" ? "flex" : "none" }}>
 
             <div className="topbar">
-              <span className="topbar-title">Lease Maturities</span>
+              <span className="topbar-title">Maturities</span>
               <div className="spacer" />
               <input className="search-box" placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} />
               <div style={{ position: "relative" }} ref={densityRef}>
@@ -2055,13 +2055,17 @@ export default function LeaseTracker() {
                           { label: "Bank",              val: c.bank || "—",                  key: "bank",           cls: "" },
                           { label: "Term",              val: c.term ? `${c.term} mo` : "—",  key: "term",           cls: "" },
                           { label: "Lease End",         val: c.leaseEnd,                     key: "leaseEnd",       cls: "" },
-                          { label: "Mo. Remaining",     val: (() => { const m = calcMonthsLeft(c.leaseEnd); const d = m < 1 ? calcDaysLeft(c.leaseEnd) : 0; return formatTimeLeft(m, d); })(), key: null, cls: moClass },
+                          { label: "Months Remaining",     val: (() => { const m = calcMonthsLeft(c.leaseEnd); const d = m < 1 ? calcDaysLeft(c.leaseEnd) : 0; return formatTimeLeft(m, d); })(), key: null, cls: moClass },
                           { label: "Monthly Payment",   val: fmt$(c.monthlyPayment),          key: "monthlyPayment", cls: c.monthlyPayment > 0 ? "blue" : "dim" },
                           { label: "Down Payment",      val: fmt$(c.downPayment),             key: "downPayment",    cls: c.downPayment  > 0 ? "blue" : "dim" },
-                          { label: "Trade Equity",      val: fmt$(c.tradeEquity),             key: "tradeEquity",    cls: c.tradeEquity  > 0 ? "blue" : "dim" },
+                          { label: "Trade Equity",      val: c.tradeEquity > 0 ? `$${Number(c.tradeEquity).toLocaleString()}` : "$0", key: "tradeEquity", cls: c.tradeEquity > 0 ? "blue" : "dim" },
                           { label: "Incentive Value",   val: c.privateIncentive > 0 ? `$${c.privateIncentive.toLocaleString()}` : "—", key: "privateIncentive", cls: c.privateIncentive > 0 ? "blue" : "dim" },
-                          { label: "Incentive Expires", val: c.incentiveExp,                  key: "incentiveExp",   cls: "" },
-                          { label: "Inc. Mo. Left",     val: (() => {
+                          { label: "Incentive Expires", val: (() => {
+                            if (!c.incentiveExp || c.incentiveExp === "—") return "—";
+                            const FULL_MONTHS = { Jan:"January", Feb:"February", Mar:"March", Apr:"April", May:"May", Jun:"June", Jul:"July", Aug:"August", Sep:"September", Oct:"October", Nov:"November", Dec:"December" };
+                            return c.incentiveExp.replace(/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/i, m => FULL_MONTHS[m] || m);
+                          })(), key: "incentiveExp", cls: "" },
+                          { label: "Incentive Remaining",     val: (() => {
                               if (!c.incentiveExp || c.incentiveExp === "—") return "—";
                               const m = calcMonthsLeft(c.incentiveExp);
                               const d = calcDaysLeft(c.incentiveExp);
@@ -2084,7 +2088,6 @@ export default function LeaseTracker() {
                               if (mp.status === "over") return "urgent";
                               return "warning";
                             })() },
-                          { label: "Last Modified",      val: c.updatedAt ? new Date(c.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—", key: null, cls: "dim" },
                         ].map(cell)}
                       </div>
                       </div>

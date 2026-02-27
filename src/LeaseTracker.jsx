@@ -729,6 +729,7 @@ const css = `
 
   .detail-topbar { display: flex; align-items: center; gap: 8px; padding: 16px 18px 14px; border-bottom: 1px solid var(--border-main); flex-shrink: 0; border-radius: 10px 10px 0 0; background: var(--bg-card); }
   .detail-lead-name { font-size: 19px; font-weight: 400; color: var(--text-primary); letter-spacing: -0.4px; line-height: 1.2; }
+  .detail-lead-sub  { font-size: 12px; font-weight: 400; color: var(--text-secondary); letter-spacing: -0.1px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .detail-close { display: flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 6px; background: transparent; border: none; cursor: pointer; color: var(--text-secondary); transition: background 0.1s, color 0.1s; margin-left: auto; }
   .detail-close:hover { background: var(--bg-hover); color: var(--text-cell); }
 
@@ -845,6 +846,10 @@ const css = `
     min-width: 200px; max-width: 300px; box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.04) inset;
     pointer-events: all; position: relative; overflow: hidden; animation: toastIn 0.28s cubic-bezier(0.16,1,0.3,1) both;
   }
+  .toast-container.day .toast {
+    background: rgba(255,255,255,0.96); border: 1px solid rgba(0,0,0,0.08);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.1), 0 1px 0 rgba(255,255,255,0.8) inset;
+  }
   .toast.leaving { animation: toastOut 0.2s cubic-bezier(0.4,0,1,1) forwards; }
   .toast-dot { flex-shrink: 0; width: 6px; height: 6px; border-radius: 50%; margin-left: 2px; }
   .toast-dot.success { background: #34d399; box-shadow: 0 0 6px rgba(52,211,153,0.6); }
@@ -852,6 +857,7 @@ const css = `
   .toast-dot.info    { background: #60a5fa; box-shadow: 0 0 6px rgba(96,165,250,0.6); }
   .toast-dot.warning { background: #fbbf24; box-shadow: 0 0 6px rgba(251,191,36,0.6); }
   .toast-message { flex: 1; font-size: 12px; font-weight: 400; color: rgba(255,255,255,0.82); line-height: 1; letter-spacing: -0.1px; white-space: nowrap; }
+  .toast-container.day .toast-message { color: #1f2937; }
   .toast-progress { position: absolute; bottom: 0; left: 0; height: 1.5px; border-radius: 0 1px 0 10px; animation: toastProgress 3s linear forwards; }
   .toast-progress.success { background: linear-gradient(90deg, #34d399, transparent); }
   .toast-progress.error   { background: linear-gradient(90deg, #f87171, transparent); }
@@ -934,10 +940,10 @@ const TOAST_ICONS = {
   warning: "!",
 };
 
-function ToastContainer({ toasts }) {
+function ToastContainer({ toasts, isDayMode }) {
   if (!toasts.length) return null;
   return (
-    <div className="toast-container">
+    <div className={"toast-container" + (isDayMode ? " day" : "")}>
       {toasts.map(t => (
         <div key={t.id} className={`toast${t.leaving ? " leaving" : ""}`}>
           <div className={`toast-dot ${t.type}`} />
@@ -956,6 +962,7 @@ export default function LeaseTracker() {
   const [state,   dispatch] = useReducer(reducer, null, loadState);
   const { customers, notes } = state;
   const [dbLoading, setDbLoading] = useState(true);
+  const hasLoaded = useRef(false);
 
   // Panel state — "closed" | "open" | "closing"
   const [panelState,    setPanelState]    = useState("closed");
@@ -1018,6 +1025,8 @@ export default function LeaseTracker() {
   // ── Load from Supabase on mount ──
   useEffect(() => {
     if (!user) return;
+    if (hasLoaded.current) return; // already loaded — don't re-fetch on token refresh
+    hasLoaded.current = true;
     async function loadFromSupabase() {
       setDbLoading(true);
       // Load customers
@@ -1642,6 +1651,11 @@ export default function LeaseTracker() {
                 <div className="detail-topbar">
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div className="detail-lead-name">{c.name}</div>
+                    {(c.year || c.model || c.trim) && (
+                      <div className="detail-lead-sub">
+                        {[c.year, c.model, (c.trim && c.trim !== "—") ? c.trim : null].filter(Boolean).join(" ")}
+                      </div>
+                    )}
                   </div>
                   {editMode && (
                     <button className="detail-edit-btn" onClick={() => setEditMode(false)}>Cancel</button>
@@ -1773,6 +1787,9 @@ export default function LeaseTracker() {
                       <div className="detail-meta-grid">
                         {[
                           { label: "Name",              val: c.name,                         key: "name",           cls: "" },
+                          { label: "Year",              val: c.year ? String(c.year) : "—",   key: "year",           cls: "" },
+                          { label: "Model",             val: c.model || "—",                 key: "model",          cls: "" },
+                          { label: "Trim",              val: (c.trim && c.trim !== "—") ? c.trim : "—", key: "trim", cls: "" },
                           { label: "Bank",              val: c.bank || "—",                  key: "bank",           cls: "" },
                           { label: "Term",              val: c.term ? `${c.term} mo` : "—",  key: "term",           cls: "" },
                           { label: "Lease End",         val: c.leaseEnd,                     key: "leaseEnd",       cls: "" },
@@ -2150,7 +2167,7 @@ export default function LeaseTracker() {
         })()}
 
       </div>
-      <ToastContainer toasts={toasts} />
+      <ToastContainer toasts={toasts} isDayMode={isDayMode} />
     </>
   );
 }

@@ -47,26 +47,6 @@ export function AuthProvider({ children }) {
     };
   }, [user, resetTimer, clearTimer]);
 
-  // ── Clear session on tab close if remember me is off ────────────────────
-  // NOTE: async signOut() never completes in beforeunload — the tab closes first.
-  // Instead we mark a "clear on next load" flag synchronously, then wipe the
-  // Supabase session on the *next* page load before getSession() is called.
-  useEffect(() => {
-    const PENDING_CLEAR_KEY = "lt_pending_clear";
-    // On mount: if a previous tab set the pending-clear flag, sign out now
-    if (localStorage.getItem(PENDING_CLEAR_KEY) === "1") {
-      localStorage.removeItem(PENDING_CLEAR_KEY);
-      supabase.auth.signOut();
-    }
-    const handleUnload = () => {
-      if (localStorage.getItem(REMEMBER_KEY) !== "1") {
-        localStorage.setItem(PENDING_CLEAR_KEY, "1");
-      }
-    };
-    window.addEventListener("beforeunload", handleUnload);
-    return () => window.removeEventListener("beforeunload", handleUnload);
-  }, []);
-
   // ── Session init ─────────────────────────────────────────────────────────
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -74,7 +54,9 @@ export function AuthProvider({ children }) {
       setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // TOKEN_REFRESHED fires on every tab refocus — ignore it to prevent reload
+      if (event === 'TOKEN_REFRESHED') return;
       setUser(buildUser(session?.user));
     });
 

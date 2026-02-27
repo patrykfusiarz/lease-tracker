@@ -42,7 +42,7 @@ const EMPTY_FORM = {
   name: "", year: "", model: "", trim: "", bank: "",
   term: "", milesYearly: "", milesTerm: "", currentMiles: "",
   monthlyPayment: "", downPayment: "", tradeEquity: "",
-  leaseEnd: "", privateIncentive: "", incentiveExp: "", status: "early",
+  leaseEnd: "", privateIncentive: "", incentiveExp: "", status: "early", hasAccident: false,
 };
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
@@ -550,10 +550,11 @@ const css = `
 
   .profile-avatar {
     width: 28px; height: 28px;
-    background: #1d1d35;
+    background: var(--bg-hover-sm);
     border-radius: 7px;
     display: flex; align-items: center; justify-content: center;
-    font-size: 10px; font-weight: 700; color: #fff; letter-spacing: 0.3px; flex-shrink: 0;
+    font-size: 10px; font-weight: 700; color: var(--text-secondary); letter-spacing: 0.3px; flex-shrink: 0;
+    border: 1px solid var(--border-input);
   }
   .profile-name { font-size: 13px; font-weight: 500; color: var(--text-primary); letter-spacing: -0.1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
@@ -629,7 +630,7 @@ const css = `
 
   /* ── STATS BAR ── */
   .stats-bar { display: flex; border-bottom: 1px solid var(--border-main); flex-shrink: 0; background: var(--bg-panel); }
-  .stat-item { flex: 1; padding: 12px 18px 11px; border-right: 1px solid var(--border-main); display: flex; flex-direction: column; gap: 3px; }
+  .stat-item { flex: 1; padding: 12px 18px 11px; border-right: 1px solid var(--border-main); display: flex; flex-direction: column; gap: 3px; cursor: pointer; transition: background 0.1s; user-select: none; }
   .stat-item:last-child { border-right: none; }
   .stat-value { font-size: 22px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.5px; line-height: 1.15; }
   .stat-label { font-size: 10px; color: var(--text-secondary); letter-spacing: 0.2px; font-weight: 500; }
@@ -693,7 +694,7 @@ const css = `
   .app.day .signal-tag.miles { background: rgba(220,38,38,0.08); color: #dc2626; border-color: rgba(220,38,38,0.2); }
   .app.day .signal-tag.miles-warn { background: rgba(217,119,6,0.08); color: #d97706; border-color: rgba(217,119,6,0.2); }
   .app.day .signal-tag.accident { background: rgba(220,38,38,0.08); color: #dc2626; border-color: rgba(220,38,38,0.2); }
-  .accident-toggle { display: flex; align-items: center; gap: 8px; padding: 10px 14px; cursor: pointer; user-select: none; }
+  .accident-toggle { display: flex; align-items: center; gap: 8px; padding: 11px 16px; cursor: pointer; user-select: none; }
   .accident-checkbox { width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--border-input); background: var(--bg-input); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background 0.1s, border-color 0.1s; }
   .accident-checkbox.checked { background: rgba(239,68,68,0.2); border-color: #ef4444; }
   .accident-label { font-size: 12px; color: var(--text-secondary); }
@@ -748,8 +749,7 @@ const css = `
 
   .detail-edit-btn { display: flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 6px; background: transparent; border: 1px solid var(--border-input); cursor: pointer; color: var(--text-secondary); font-size: 11.5px; font-family: 'Inter', sans-serif; font-weight: 500; transition: all 0.1s; }
   .detail-edit-btn:hover  { background: var(--bg-hover); color: var(--text-cell); border-color: var(--border-status); }
-  .detail-edit-btn.active { background: #eef2ff; border-color: #c7d2fe; color: #4f46e5; }
-  .app:not(.day) .detail-edit-btn.active { background: var(--bg-row-selected); border-color: #3d7ed4; color: #3d7ed4; }
+  .detail-edit-btn.active { background: var(--bg-row-selected); border-color: var(--border-input-focus); color: var(--border-input-focus); }
   .detail-edit-btn.saved { border-color: #16a34a; color: #16a34a; }
   .app:not(.day) .detail-edit-btn.saved { border-color: #2a8f4e; color: #2a8f4e; }
 
@@ -793,8 +793,7 @@ const css = `
   .notes-textarea::placeholder { color: var(--text-muted); }
   .notes-footer { display: flex; align-items: center; justify-content: space-between; }
   .notes-saved-at { font-size: 10.5px; color: var(--text-muted); }
-  .notes-save-btn { padding: 4px 13px; border-radius: 6px; background: #8c90cc; color: #fff; border: none; font-size: 11.5px; font-family: 'Inter', sans-serif; font-weight: 600; cursor: pointer; transition: opacity 0.15s; }
-  .app:not(.day) .notes-save-btn { background: #3d7ed4; }
+  .notes-save-btn { padding: 4px 13px; border-radius: 6px; background: var(--btn-primary-bg); color: var(--btn-primary-text); border: none; font-size: 11.5px; font-family: 'Inter', sans-serif; font-weight: 600; cursor: pointer; transition: opacity 0.15s; }
   .notes-save-btn:hover    { opacity: 0.85; }
   .notes-save-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
@@ -803,8 +802,7 @@ const css = `
   .note-entry:last-child { padding-bottom: 0; }
   .note-timeline-col { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; width: 14px; padding-top: 3px; }
   .note-timeline-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border-input); border: 1.5px solid var(--border-status); flex-shrink: 0; z-index: 1; }
-  .note-entry:first-child .note-timeline-dot { background: #6366f1; border-color: #6366f1; }
-  .app:not(.day) .note-entry:first-child .note-timeline-dot { background: #3d7ed4; border-color: #3d7ed4; }
+  .note-entry:first-child .note-timeline-dot { background: var(--border-input-focus); border-color: var(--border-input-focus); }
   .note-timeline-line { width: 1px; flex: 1; background: var(--border-main); margin-top: 4px; }
   .note-entry:last-child .note-timeline-line { display: none; }
   .note-entry-body { flex: 1; min-width: 0; }
@@ -1235,7 +1233,7 @@ export default function LeaseTracker() {
   const notesRef = useRef(null);
 
   const [search,    setSearch]    = useState("");
-  const [sortKey,   setSortKey]   = useState(() => { try { return JSON.parse(localStorage.getItem("lt-prefs") || "{}").sortKey || null; } catch { return null; } });
+  const [sortKey,   setSortKey]   = useState(() => { try { return JSON.parse(localStorage.getItem("lt-prefs") || "{}").sortKey || "leaseEnd"; } catch { return "leaseEnd"; } });
   const [sortDir,   setSortDir]   = useState(() => { try { return JSON.parse(localStorage.getItem("lt-prefs") || "{}").sortDir || "asc"; } catch { return "asc"; } });
 
   const [showModal, setShowModal] = useState(false);
@@ -1593,7 +1591,7 @@ export default function LeaseTracker() {
       lease_end:        customer.leaseEnd === "—" ? null : customer.leaseEnd,
       private_incentive: customer.privateIncentive,
       incentive_exp:    customer.incentiveExp === "—" ? null : customer.incentiveExp,
-      has_accident:     false,
+      has_accident:     form.hasAccident || false,
       status:           customer.status,
     });
     if (!error) {
@@ -2111,7 +2109,7 @@ export default function LeaseTracker() {
                       </div>
                       </div>
 
-                      {/* Accident flag — only visible in edit mode or if flagged */}
+                      {/* Accident flag — in edit mode always visible, in view mode only if flagged */}
                       {(editMode || c.hasAccident) && (
                         <div
                           className="accident-toggle"
@@ -2126,7 +2124,7 @@ export default function LeaseTracker() {
                             )}
                           </div>
                           <span className="accident-label" style={{ color: (editMode ? editForm.hasAccident : c.hasAccident) ? (isDayMode ? "#dc2626" : "#ef4444") : undefined }}>
-                            {(editMode ? editForm.hasAccident : c.hasAccident) ? "Accident reported" : "No accident on record"}
+                            Accident Reported
                           </span>
                         </div>
                       )}
@@ -2272,7 +2270,7 @@ export default function LeaseTracker() {
                       onBlur={e => e.target.style.borderColor="var(--border-input)"}
                     />
                     {importError && (
-                      <div style={{ fontSize:11.5, color:"var(--text-primary)", background:"var(--bg-confirm)", border:"1px solid var(--border-confirm)", borderRadius:6, padding:"8px 12px", lineHeight:1.5, color: "#dc2626" }}>
+                      <div style={{ fontSize:11.5, background:"var(--bg-confirm)", border:"1px solid var(--border-confirm)", borderRadius:6, padding:"8px 12px", lineHeight:1.5, color: isDayMode ? "#dc2626" : "#f87171" }}>
                         ⚠ {importError}
                       </div>
                     )}
@@ -2302,7 +2300,7 @@ export default function LeaseTracker() {
                   </div>
                   <div className="modal-body">
                     {/* Name */}
-                    <div className="modal-row cols-1" style={{ marginBottom:4 }}>
+                    <div className="modal-row cols-1">
                       <div className="modal-field">
                         <label>Full Name</label>
                         <input
@@ -2433,6 +2431,24 @@ export default function LeaseTracker() {
                   </div>
                 </div>
                 </div>
+
+                {/* Accident flag */}
+                <div
+                  style={{ padding: "10px 18px", borderTop: "1px solid var(--border-main)", display: "flex", alignItems: "center", gap: 8, cursor: "pointer", userSelect: "none" }}
+                  onClick={() => setForm(p => ({ ...p, hasAccident: !p.hasAccident }))}
+                >
+                  <div className={`accident-checkbox${form.hasAccident ? " checked" : ""}`} style={{ flexShrink: 0 }}>
+                    {form.hasAccident && (
+                      <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
+                        <path d="M1.5 4.5l2.5 2.5 3.5-4" stroke="#ef4444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                  </div>
+                  <span className="accident-label" style={{ color: form.hasAccident ? (isDayMode ? "#dc2626" : "#ef4444") : undefined }}>
+                    Accident Reported
+                  </span>
+                </div>
+
                 <div className="modal-footer">
                   {isDuplicate && (
                     <span style={{ fontSize: 11, color: isDayMode ? "#b45309" : "#f59e0b", flex: 1, display: "flex", alignItems: "center", gap: 5 }}>

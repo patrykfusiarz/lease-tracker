@@ -643,7 +643,7 @@ const css = `
   .col-headers { display: grid; grid-template-columns: ${GRID}; padding: 0 14px; height: 32px; align-items: center; border-bottom: 1px solid var(--border-main); position: sticky; top: 0; background: var(--bg-panel); z-index: 10; min-width: 0; }
   .col-header { font-size: 10px; color: var(--text-secondary); font-weight: 500; letter-spacing: 0.3px; text-transform: uppercase; display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none; transition: color 0.1s; height: 100%; }
   .col-header:hover { color: var(--text-primary); }
-  .col-header.active { color: #6366f1; }
+  .col-header.active { color: var(--border-input-focus); }
   .app:not(.day) .col-header.active { color: #7aa4e0; }
   .sort-icon { display: flex; align-items: center; opacity: 0.5; flex-shrink: 0; }
   .col-header.active .sort-icon { opacity: 1; }
@@ -713,7 +713,7 @@ const css = `
   .confirm-title { font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px; letter-spacing: -0.2px; }
   .confirm-sub   { font-size: 12.5px; color: var(--text-secondary); margin-bottom: 20px; line-height: 1.5; }
   .confirm-actions { display: flex; justify-content: flex-end; gap: 8px; }
-  .btn-danger { padding: 6px 14px; border-radius: 6px; background: #5a1a1a; border: 1px solid #7a2020; color: #f0a0a0; font-size: 12.5px; font-family: 'Inter', sans-serif; font-weight: 600; cursor: pointer; transition: all 0.1s; }
+  .btn-danger { padding: 6px 14px; border-radius: 7px; background: #5a1a1a; border: 1px solid #7a2020; color: #f0a0a0; font-size: 12.5px; font-family: 'Inter', sans-serif; font-weight: 600; cursor: pointer; transition: all 0.1s; }
   .btn-danger:hover { background: #7a2020; }
   .app.day .btn-danger { background: #fef2f2; border-color: #fecaca; color: #dc2626; }
   .app.day .btn-danger:hover { background: #fee2e2; }
@@ -814,8 +814,8 @@ const css = `
   .note-entry-text { font-size: 12.5px; color: var(--text-cell); line-height: 1.6; white-space: pre-wrap; }
 
   /* ── ADD CUSTOMER MODAL ── */
-  .modal-overlay { position: fixed; inset: 0; background: var(--overlay-bg); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; z-index: 100; animation: fadeIn 0.12s ease; }
-  .app.day .modal-overlay { backdrop-filter: blur(4px); }
+  .modal-overlay { position: fixed; inset: 0; background: var(--overlay-bg); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 100; animation: fadeIn 0.12s ease; }
+  .app.day .modal-overlay { backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
   .modal {
     background: var(--bg-panel); border: 1px solid var(--border-card); border-radius: 14px; width: 480px; overflow: hidden;
     box-sizing: border-box; box-shadow: 0 32px 80px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.04);
@@ -956,11 +956,11 @@ const css = `
   .tl-card-vehicle { font-size: 11px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .tl-card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 2px; }
   .tl-card-time { font-size: 10.5px; font-weight: 600; }
-  .tl-card-status { font-size: 10px; font-weight: 500; padding: 1px 6px; border-radius: 3px; }
+  .tl-card-status { font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 4px; border: 1px solid transparent; }
   .tl-card-badges { display: flex; align-items: center; gap: 5px; margin-top: 4px; flex-wrap: wrap; }
-  .tl-badge-incentive { font-size: 9.5px; font-weight: 600; padding: 1px 6px; border-radius: 3px; background: rgba(251,191,36,0.12); color: #d97706; border: 1px solid rgba(251,191,36,0.25); letter-spacing: 0.1px; }
+  .tl-badge-incentive { font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 4px; background: rgba(251,191,36,0.12); color: #d97706; border: 1px solid rgba(251,191,36,0.25); letter-spacing: 0.1px; }
   .app:not(.day) .tl-badge-incentive { background: rgba(251,191,36,0.1); color: #f59e0b; border-color: rgba(251,191,36,0.2); }
-  .tl-badge-miles { font-size: 9.5px; font-weight: 600; padding: 1px 6px; border-radius: 3px; background: rgba(239,68,68,0.1); color: #dc2626; border: 1px solid rgba(239,68,68,0.2); letter-spacing: 0.1px; }
+  .tl-badge-miles { font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 4px; background: rgba(239,68,68,0.1); color: #dc2626; border: 1px solid rgba(239,68,68,0.2); letter-spacing: 0.1px; }
   .app:not(.day) .tl-badge-miles { background: rgba(248,113,113,0.1); color: #f87171; border-color: rgba(248,113,113,0.2); }
   .tl-card-date { font-size: 10px; color: var(--text-tertiary); margin-top: 1px; }
 
@@ -1501,7 +1501,7 @@ export default function LeaseTracker() {
       has_accident:      updates.hasAccident,
     }).eq("id", selected);
     setEditSaving(false);
-    if (error) { addToast("Save Failed", "error", "Please try again"); return; }
+    if (error) { console.error("Supabase save error:", JSON.stringify(error)); addToast("Save Failed", "error", error.message || "Please try again"); return; }
     // Build a human-readable summary of what changed
     const FIELD_LABELS = {
       name: "Name", year: "Year", model: "Model", trim: "Trim", bank: "Bank",
@@ -1715,7 +1715,7 @@ export default function LeaseTracker() {
 
   if (dbLoading) return (
     <div style={{ minHeight:"100vh", background:"#0e1117", display:"flex", alignItems:"center", justifyContent:"center" }}>
-      <div style={{ width:28, height:28, border:"2px solid #1e2432", borderTopColor:"#4a8fd4", borderRadius:"50%", animation:"spin 0.7s linear infinite" }} />
+      <div style={{ width:28, height:28, border:"2px solid var(--border-main)", borderTopColor:"var(--border-input-focus)", borderRadius:"50%", animation:"spin 0.7s linear infinite" }} />
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
@@ -1811,8 +1811,8 @@ export default function LeaseTracker() {
             <div className="stats-bar">
               {[
                 { value: customers.length, label: "Total",           color: null,       filter: null        },
-                { value: urgentCount,      label: "Ending This Mo.", color: isDayMode ? "#1d4ed8" : "#7aa4e0", filter: 'urgent'    },
-                { value: soonCount,        label: "Ending in 3 Mo.", color: isDayMode ? "#2563eb" : "#5a84c0", filter: 'soon'      },
+                { value: urgentCount,      label: "Ending This Month", color: isDayMode ? "#1d4ed8" : "#7aa4e0", filter: 'urgent'    },
+                { value: soonCount,        label: "Ending in 3 Months", color: isDayMode ? "#2563eb" : "#5a84c0", filter: 'soon'      },
                 { value: withIncentive,    label: "With Incentive",  color: isDayMode ? "#3b82f6" : "#4a6ea8", filter: 'incentive' },
                 { value: milesAtRisk,       label: "Miles At Risk",    color: isDayMode ? "#d97706" : "#f59e0b", filter: 'miles'     },
               ].map(({ value, label, color, filter }) => {
@@ -1878,7 +1878,6 @@ export default function LeaseTracker() {
                       {notes[row.id]?.history?.length > 0 && (
                         <span className="notes-count-badge">{notes[row.id].history.length}</span>
                       )}
-
                     </span>
                     <span className="cell-year">{row.year}</span>
                     <span className="cell-model">{row.model}</span>

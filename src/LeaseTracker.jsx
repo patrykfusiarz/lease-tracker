@@ -588,7 +588,7 @@ const css = `
   .toggle-track.on .toggle-thumb { transform: translateX(12px); background: #fff; }
 
   /* ── MAIN LAYOUT ── */
-  .main-wrapper { flex: 1; display: flex; align-items: stretch; padding: 10px 10px 10px 0; overflow: hidden; background: var(--bg-body); }
+  .main-wrapper { flex: 1; display: flex; align-items: stretch; padding: 10px 10px 10px 0; overflow: hidden; background: var(--bg-body); position: relative; }
 
   .list-panel {
     flex: 1; display: flex; flex-direction: column; overflow: hidden;
@@ -878,120 +878,91 @@ const css = `
     box-shadow: 0 0 0 1px var(--shadow-panel), 0 8px 32px var(--shadow-panel);
     animation: fadeIn 0.18s ease;
   }
-  .app.day .timeline-panel {
-    border: 1px solid #e8eaef;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.05), 0 0 0 1px rgba(0,0,0,0.02);
-  }
+  .app.day .timeline-panel { border: 1px solid #e8eaef; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+
   .timeline-topbar {
     display: flex; align-items: center; gap: 10px; padding: 0 18px;
     height: 46px; border-bottom: 1px solid var(--border-main);
     flex-shrink: 0; background: var(--bg-panel); border-radius: 10px 10px 0 0;
   }
   .timeline-title { font-size: 13px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.2px; }
-  .timeline-nav-btn {
-    display: flex; align-items: center; justify-content: center;
-    width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--border-input);
-    background: transparent; cursor: pointer; color: var(--text-secondary);
-    transition: background 0.1s, color 0.1s;
-  }
-  .timeline-nav-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
-  .timeline-range-label {
-    font-size: 12px; font-weight: 500; color: var(--text-primary);
-    letter-spacing: -0.1px; min-width: 160px; text-align: center;
-  }
-  .timeline-today-btn {
-    display: flex; align-items: center; padding: 0 10px; height: 26px;
-    border-radius: 6px; border: 1px solid var(--border-input);
-    background: transparent; cursor: pointer; color: var(--text-secondary);
-    font-size: 11.5px; font-family: inherit; font-weight: 500;
-    transition: background 0.1s, color 0.1s;
-  }
-  .timeline-today-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
-  .timeline-legend { display: flex; align-items: center; gap: 12px; margin-left: auto; }
-  .timeline-legend-item { display: flex; align-items: center; gap: 5px; font-size: 10.5px; color: var(--text-secondary); }
-  .timeline-legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 
-  .timeline-body { flex: 1; overflow: auto; position: relative; }
-  .timeline-body::-webkit-scrollbar { width: 4px; height: 4px; }
+  .timeline-body {
+    flex: 1; overflow-x: auto; overflow-y: hidden;
+    display: flex; flex-direction: column;
+  }
+  .timeline-body::-webkit-scrollbar { height: 4px; }
   .timeline-body::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 3px; }
 
-  .timeline-grid {
-    display: grid;
-    min-height: 100%;
-    position: relative;
+  .timeline-months-row {
+    display: flex; gap: 0; flex: 1; min-height: 0; overflow-y: hidden;
+    padding: 14px 16px 16px; gap: 10px;
+    overflow-x: auto;
   }
-  .timeline-month-headers {
-    display: flex; border-bottom: 1px solid var(--border-main);
-    position: sticky; top: 0; z-index: 10; background: var(--bg-panel);
-  }
-  .timeline-month-col {
-    flex-shrink: 0; border-right: 1px solid var(--border-main);
-    padding: 7px 12px; font-size: 10px; font-weight: 600;
-    color: var(--text-secondary); letter-spacing: 0.4px; text-transform: uppercase;
-  }
-  .timeline-month-col.current { color: var(--border-input-focus); }
-  .timeline-name-col {
-    width: 180px; min-width: 180px; flex-shrink: 0;
-    border-right: 1px solid var(--border-main);
-    padding: 7px 12px; font-size: 10px; font-weight: 600;
-    color: var(--text-secondary); letter-spacing: 0.4px; text-transform: uppercase;
-    position: sticky; left: 0; background: var(--bg-panel); z-index: 11;
-  }
-  .timeline-row {
-    display: flex; border-bottom: 1px solid var(--border-sidebar);
-    cursor: pointer; transition: background 0.08s; min-height: 40px; align-items: center;
-  }
-  .timeline-row:hover { background: var(--bg-hover); }
-  .timeline-row:hover .timeline-row-name { color: var(--text-primary); }
-  .timeline-row-name-cell {
-    width: 180px; min-width: 180px; flex-shrink: 0;
-    border-right: 1px solid var(--border-main);
-    padding: 0 12px; position: sticky; left: 0;
-    background: inherit; z-index: 5;
-    display: flex; flex-direction: column; justify-content: center; gap: 1px;
-  }
-  .timeline-row-name { font-size: 12.5px; font-weight: 500; color: var(--text-name); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -0.1px; }
-  .timeline-row-sub  { font-size: 10.5px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .timeline-row-cells { display: flex; flex: 1; position: relative; align-items: center; }
-  .timeline-month-cell { flex-shrink: 0; height: 40px; border-right: 1px solid var(--border-sidebar); position: relative; }
-  .timeline-month-cell.current-month { background: var(--bg-hover-sm); opacity: 0.4; }
+  .timeline-months-row::-webkit-scrollbar { display: none; }
 
-  .timeline-bar {
-    position: absolute; height: 22px; border-radius: 5px;
-    top: 50%; transform: translateY(-50%);
-    display: flex; align-items: center; padding: 0 8px;
-    font-size: 10.5px; font-weight: 500; white-space: nowrap; overflow: hidden;
-    cursor: pointer; transition: filter 0.1s, transform 0.1s;
-    z-index: 3;
+  .tl-month {
+    display: flex; flex-direction: column; gap: 0;
+    min-width: 200px; width: 200px; flex-shrink: 0;
+    background: var(--bg-input); border-radius: 10px;
+    border: 1px solid var(--border-card);
+    overflow: hidden;
   }
-  .timeline-bar:hover { filter: brightness(1.15); transform: translateY(-50%) scaleY(1.08); }
-  .timeline-bar-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tl-month.is-current { border-color: var(--border-input-focus); }
+  .tl-month-header {
+    padding: 10px 14px 9px; border-bottom: 1px solid var(--border-main);
+    display: flex; align-items: baseline; justify-content: space-between; flex-shrink: 0;
+  }
+  .tl-month-name { font-size: 12px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.1px; }
+  .tl-month.is-current .tl-month-name { color: var(--border-input-focus); }
+  .tl-month-count {
+    font-size: 10px; font-weight: 500; color: var(--text-secondary);
+    background: var(--bg-hover-sm); border-radius: 10px; padding: 1px 7px;
+  }
+  .tl-month.is-current .tl-month-count { background: #1e3a5a; color: #7aa4e0; }
+  .app.day .tl-month.is-current .tl-month-count { background: #dbeafe; color: #2563eb; }
 
-  .timeline-today-line {
-    position: absolute; top: 0; bottom: 0; width: 1.5px;
-    background: var(--border-input-focus); z-index: 4; pointer-events: none;
+  .tl-month-cards { flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 6px; min-height: 60px; }
+  .tl-month-cards::-webkit-scrollbar { width: 3px; }
+  .tl-month-cards::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 3px; }
+
+  .tl-empty { display: flex; align-items: center; justify-content: center; padding: 16px 8px; }
+  .tl-empty-text { font-size: 11px; color: var(--text-muted); }
+
+  .tl-card {
+    background: var(--bg-card); border: 1px solid var(--border-card);
+    border-radius: 8px; padding: 9px 11px; cursor: pointer;
+    transition: border-color 0.12s, background 0.12s, transform 0.1s;
+    display: flex; flex-direction: column; gap: 5px;
   }
-  .timeline-today-line::before {
-    content: "TODAY"; position: absolute; top: -18px; left: 50%; transform: translateX(-50%);
-    font-size: 8px; font-weight: 700; letter-spacing: 0.6px;
-    color: var(--border-input-focus); white-space: nowrap;
+  .tl-card:hover { border-color: var(--border-input-focus); background: var(--bg-hover); transform: translateY(-1px); }
+  .tl-card.urgent { border-left: 3px solid #7aa4e0; }
+  .tl-card.soon   { border-left: 3px solid #5a84c0; }
+  .tl-card.later  { border-left: 3px solid var(--border-input); }
+
+  .tl-card-name { font-size: 12.5px; font-weight: 500; color: var(--text-name); letter-spacing: -0.1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tl-card-vehicle { font-size: 11px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tl-card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 2px; }
+  .tl-card-time { font-size: 10.5px; font-weight: 600; }
+  .tl-card-status { font-size: 10px; font-weight: 500; padding: 1px 6px; border-radius: 3px; }
+
+  .tl-panel-overlay {
+    position: absolute; top: 0; right: 0; bottom: 0;
+    width: 55%; z-index: 20;
+    animation: panelIn 0.22s cubic-bezier(0.16,1,0.3,1) forwards;
   }
-  .timeline-empty {
+  .tl-backdrop {
+    position: absolute; inset: 0; z-index: 19;
+    background: var(--overlay-bg); backdrop-filter: blur(4px);
+    animation: fadeIn 0.12s ease;
+  }
+
+  .timeline-empty-state {
     flex: 1; display: flex; flex-direction: column; align-items: center;
-    justify-content: center; gap: 8px; padding: 40px; opacity: 0.5;
+    justify-content: center; gap: 8px; opacity: 0.5;
   }
-  .timeline-empty-title { font-size: 13px; font-weight: 500; color: var(--text-tertiary); }
-  .timeline-empty-sub { font-size: 12px; color: var(--text-muted); }
-
-  .timeline-tooltip {
-    position: fixed; background: var(--bg-card); border: 1px solid var(--border-card);
-    border-radius: 8px; padding: 10px 12px; font-size: 11.5px; color: var(--text-primary);
-    box-shadow: 0 8px 24px rgba(0,0,0,0.3); pointer-events: none; z-index: 100;
-    min-width: 160px; animation: fadeIn 0.1s ease;
-  }
-  .timeline-tooltip-name { font-weight: 600; font-size: 12.5px; margin-bottom: 4px; }
-  .timeline-tooltip-row { display: flex; justify-content: space-between; gap: 16px; color: var(--text-secondary); margin-top: 3px; }
-  .timeline-tooltip-val { color: var(--text-primary); font-weight: 500; }
+  .timeline-empty-state-title { font-size: 13px; font-weight: 500; color: var(--text-tertiary); }
+  .timeline-empty-state-sub { font-size: 12px; color: var(--text-muted); }
 
 `;
 
@@ -1086,184 +1057,107 @@ function ToastContainer({ toasts, isDayMode }) {
 }
 
 
+
+
 // ── TIMELINE VIEW ─────────────────────────────────────────────────────────────
 
-const STATUS_COLORS = {
-  early:        "#5a6a88",
-  attempting:   "#4a7eb8",
-  contact:      "#6870b8",
-  waiting:      "#8878a8",
-  success:      "#3a8a6a",
-  lease_return: "#3a7a9a",
-  buyout:       "#4a5ab0",
-  lost:         "#9a4050",
-};
+function TimelineView({ customers, isDayMode, openPanel }) {
+  const now    = new Date();
+  const MONTHS = 12;
+  const MONTH_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
-function TimelineView({ customers, isDayMode, onSelectCustomer }) {
-  const now = new Date();
-  const [viewStart, setViewStart] = useState(() => {
-    const d = new Date(now.getFullYear(), now.getMonth(), 1);
-    return d;
-  });
-  const [tooltip, setTooltip] = useState(null); // { x, y, customer }
-  const MONTHS_SHOWN = 12;
-  const MONTH_WIDTH  = 100; // px per month
-  const NAME_COL     = 180;
+  // Build 12 month buckets from today forward
+  const months = useMemo(() => (
+    Array.from({ length: MONTHS }, (_, i) =>
+      new Date(now.getFullYear(), now.getMonth() + i, 1)
+    )
+  ), []);
 
-  // Months to display
-  const months = useMemo(() => {
-    return Array.from({ length: MONTHS_SHOWN }, (_, i) => {
-      const d = new Date(viewStart.getFullYear(), viewStart.getMonth() + i, 1);
-      return d;
+  const buckets = useMemo(() => {
+    const map = new Map();
+    months.forEach(m => map.set(`${m.getFullYear()}-${m.getMonth()}`, []));
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    customers.forEach(c => {
+      const end = smartParseDate(c.leaseEnd);
+      if (!end || end < todayStart) return;
+      const key = `${end.getFullYear()}-${end.getMonth()}`;
+      if (map.has(key)) map.get(key).push(c);
     });
-  }, [viewStart]);
+    map.forEach(arr => arr.sort((a,b) => parseDateVal(a.leaseEnd) - parseDateVal(b.leaseEnd)));
+    return map;
+  }, [customers, months]);
 
-  const viewEnd = useMemo(() => new Date(viewStart.getFullYear(), viewStart.getMonth() + MONTHS_SHOWN, 1), [viewStart]);
-
-  // Only customers with a parseable lease end within the view window ±6mo buffer
-  const visible = useMemo(() => {
-    const bufferStart = new Date(viewStart.getFullYear(), viewStart.getMonth() - 1, 1);
-    return customers
-      .filter(c => {
-        const end = smartParseDate(c.leaseEnd);
-        if (!end) return false;
-        return end >= bufferStart && end <= viewEnd;
-      })
-      .sort((a, b) => parseDateVal(a.leaseEnd) - parseDateVal(b.leaseEnd));
-  }, [customers, viewStart, viewEnd]);
-
-  const navigate = (dir) => {
-    setViewStart(d => new Date(d.getFullYear(), d.getMonth() + dir * 3, 1));
-  };
-  const goToday = () => setViewStart(new Date(now.getFullYear(), now.getMonth(), 1));
-
-  // Convert a date to pixel offset from left of grid (after name col)
-  const dateToX = (date) => {
-    const msPerMonth = 1000 * 60 * 60 * 24 * 30.44;
-    const monthsFromStart = (date - viewStart) / msPerMonth;
-    return monthsFromStart * MONTH_WIDTH;
-  };
-
-  const todayX = dateToX(now);
-  const totalWidth = MONTHS_SHOWN * MONTH_WIDTH;
-
-  const MONTH_SHORT_LABELS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const total = useMemo(() => { let n = 0; buckets.forEach(a => n += a.length); return n; }, [buckets]);
 
   return (
     <div className="timeline-panel">
       {/* Topbar */}
       <div className="timeline-topbar">
         <span className="timeline-title">Lease End Timeline</span>
-        <button className="timeline-nav-btn" onClick={() => navigate(-1)} title="Back 3 months">
-          <ChevronLeft size={13} strokeWidth={2} />
-        </button>
-        <span className="timeline-range-label">
-          {MONTH_SHORT_LABELS[viewStart.getMonth()]} {viewStart.getFullYear()} — {MONTH_SHORT_LABELS[viewEnd.getMonth() === 0 ? 11 : viewEnd.getMonth() - 1]} {viewEnd.getMonth() === 0 ? viewEnd.getFullYear() - 1 : viewEnd.getFullYear()}
+        <span style={{ fontSize: 11.5, color: "var(--text-secondary)" }}>
+          {total} lease{total !== 1 ? "s" : ""} in the next 12 months
         </span>
-        <button className="timeline-nav-btn" onClick={() => navigate(1)} title="Forward 3 months">
-          <ChevronRight size={13} strokeWidth={2} />
-        </button>
-        <button className="timeline-today-btn" onClick={goToday}>Today</button>
         <div className="spacer" />
-        <div className="timeline-legend">
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           {[
-            { label: "Urgent", color: "#7aa4e0" },
-            { label: "Soon",   color: "#5a84c0" },
-            { label: "Later",  color: "#5a6a88" },
+            { label: "This month", color: "#7aa4e0" },
+            { label: "1–3 months", color: "#5a84c0" },
+            { label: "4+ months",  color: "var(--text-muted)" },
           ].map(l => (
-            <div key={l.label} className="timeline-legend-item">
-              <div className="timeline-legend-dot" style={{ background: l.color }} />
+            <div key={l.label} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10.5, color: "var(--text-secondary)" }}>
+              <div style={{ width: 3, height: 14, borderRadius: 2, background: l.color, flexShrink: 0 }} />
               {l.label}
             </div>
           ))}
         </div>
       </div>
 
-      {/* Grid */}
+      {/* Buckets */}
       <div className="timeline-body">
-        {visible.length === 0 ? (
-          <div className="timeline-empty">
-            <span className="timeline-empty-title">No leases in this window</span>
-            <span className="timeline-empty-sub">Navigate to find customers with upcoming lease ends</span>
+        {total === 0 ? (
+          <div className="timeline-empty-state">
+            <span className="timeline-empty-state-title">No upcoming lease ends</span>
+            <span className="timeline-empty-state-sub">Add customers with lease end dates to see them here</span>
           </div>
         ) : (
-          <div style={{ minWidth: NAME_COL + totalWidth }}>
-            {/* Month headers */}
-            <div className="timeline-month-headers">
-              <div className="timeline-name-col">Customer</div>
-              {months.map((m, i) => {
-                const isCurrent = m.getFullYear() === now.getFullYear() && m.getMonth() === now.getMonth();
-                return (
-                  <div key={i} className={`timeline-month-col${isCurrent ? " current" : ""}`}
-                    style={{ width: MONTH_WIDTH, minWidth: MONTH_WIDTH }}>
-                    {MONTH_SHORT_LABELS[m.getMonth()]} {m.getFullYear() !== viewStart.getFullYear() && i === 0 || m.getMonth() === 0 ? m.getFullYear() : ""}
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Rows */}
-            {visible.map(c => {
-              const leaseEndDate = smartParseDate(c.leaseEnd);
-              if (!leaseEndDate) return null;
-
-              const ml = calcMonthsLeft(c.leaseEnd);
-              const dl = calcDaysLeft(c.leaseEnd);
-              const barColor = ml === 0 ? "#7aa4e0" : ml <= 3 ? "#5a84c0" : "#5a6a88";
-              const isDark = !isDayMode;
-
-              // Bar spans from start of that month to lease end date
-              const barStartDate = new Date(leaseEndDate.getFullYear(), leaseEndDate.getMonth(), 1);
-              const barX = Math.max(0, dateToX(barStartDate));
-              const barEndX = Math.min(totalWidth, dateToX(leaseEndDate));
-              const barW = Math.max(barEndX - barX, 28);
-
-              const timeLabel = ml === 0 ? `${dl}d` : `${ml} mo`;
+          <div className="timeline-months-row">
+            {months.map((m, mi) => {
+              const key    = `${m.getFullYear()}-${m.getMonth()}`;
+              const cards  = buckets.get(key) || [];
+              const isCurrent = mi === 0;
 
               return (
-                <div key={c.id} className="timeline-row"
-                  onClick={() => onSelectCustomer(c.id)}
-                  onMouseLeave={() => setTooltip(null)}>
-
-                  {/* Name cell */}
-                  <div className="timeline-row-name-cell"
-                    style={{ background: isDark ? "var(--bg-panel)" : "#fff" }}>
-                    <span className="timeline-row-name">{c.name}</span>
-                    <span className="timeline-row-sub">{[c.year, c.model].filter(Boolean).join(" ")}</span>
+                <div key={key} className={`tl-month${isCurrent ? " is-current" : ""}`}>
+                  <div className="tl-month-header">
+                    <span className="tl-month-name">
+                      {MONTH_SHORT[m.getMonth()]} {m.getFullYear()}
+                      {isCurrent ? <span style={{ marginLeft: 6, fontSize: 9, fontWeight: 600, letterSpacing: "0.4px", textTransform: "uppercase", opacity: 0.7 }}>This month</span> : null}
+                    </span>
+                    {cards.length > 0 && <span className="tl-month-count">{cards.length}</span>}
                   </div>
+                  <div className="tl-month-cards">
+                    {cards.length === 0 ? (
+                      <div className="tl-empty"><span className="tl-empty-text">—</span></div>
+                    ) : cards.map(c => {
+                      const ml       = calcMonthsLeft(c.leaseEnd);
+                      const dl       = calcDaysLeft(c.leaseEnd);
+                      const urgency  = ml === 0 ? "urgent" : ml <= 3 ? "soon" : "later";
+                      const barColor = ml === 0 ? "#7aa4e0" : ml <= 3 ? "#5a84c0" : "var(--text-muted)";
+                      const timeStr  = ml === 0 ? (dl <= 0 ? "Today" : `${dl}d left`) : `${ml} mo`;
+                      const sm       = statusMeta(c.status);
+                      const vehicle  = [c.year, c.model, c.trim && c.trim !== "—" ? c.trim : null].filter(Boolean).join(" ");
 
-                  {/* Month cells + bar */}
-                  <div className="timeline-row-cells" style={{ width: totalWidth, position: "relative" }}>
-                    {months.map((m, i) => {
-                      const isCurrent = m.getFullYear() === now.getFullYear() && m.getMonth() === now.getMonth();
                       return (
-                        <div key={i} className={`timeline-month-cell${isCurrent ? " current-month" : ""}`}
-                          style={{ width: MONTH_WIDTH, minWidth: MONTH_WIDTH }} />
+                        <div key={c.id} className={`tl-card ${urgency}`} onClick={() => openPanel(c.id)}>
+                          <span className="tl-card-name">{c.name}</span>
+                          {vehicle && <span className="tl-card-vehicle">{vehicle}</span>}
+                          <div className="tl-card-footer">
+                            <span className="tl-card-time" style={{ color: barColor }}>{timeStr}</span>
+                            <span className="tl-card-status" style={{ background: sm.color + "22", color: sm.color }}>{sm.label}</span>
+                          </div>
+                        </div>
                       );
                     })}
-
-                    {/* Today line */}
-                    {todayX > 0 && todayX < totalWidth && (
-                      <div className="timeline-today-line" style={{ left: todayX }} />
-                    )}
-
-                    {/* Lease end bar */}
-                    <div className="timeline-bar"
-                      style={{
-                        left: barX,
-                        width: Math.max(barW, 40),
-                        background: barColor + (isDark ? "33" : "22"),
-                        border: `1px solid ${barColor}66`,
-                        color: barColor,
-                      }}
-                      onMouseEnter={(e) => {
-                        const rect = e.currentTarget.getBoundingClientRect();
-                        setTooltip({ x: rect.right + 8, y: rect.top, customer: c });
-                      }}
-                      onMouseLeave={() => setTooltip(null)}
-                    >
-                      <span className="timeline-bar-label">{timeLabel}</span>
-                    </div>
                   </div>
                 </div>
               );
@@ -1271,35 +1165,10 @@ function TimelineView({ customers, isDayMode, onSelectCustomer }) {
           </div>
         )}
       </div>
-
-      {/* Tooltip */}
-      {tooltip && (
-        <div className="timeline-tooltip" style={{
-          left: Math.min(tooltip.x, window.innerWidth - 200),
-          top: tooltip.y,
-        }}>
-          <div className="timeline-tooltip-name">{tooltip.customer.name}</div>
-          <div className="timeline-tooltip-row">
-            <span>Vehicle</span>
-            <span className="timeline-tooltip-val">{[tooltip.customer.year, tooltip.customer.model, tooltip.customer.trim !== "—" ? tooltip.customer.trim : null].filter(Boolean).join(" ") || "—"}</span>
-          </div>
-          <div className="timeline-tooltip-row">
-            <span>Lease End</span>
-            <span className="timeline-tooltip-val">{tooltip.customer.leaseEnd}</span>
-          </div>
-          <div className="timeline-tooltip-row">
-            <span>Time Left</span>
-            <span className="timeline-tooltip-val">{(() => { const m = calcMonthsLeft(tooltip.customer.leaseEnd); const d = calcDaysLeft(tooltip.customer.leaseEnd); return formatTimeLeft(m, d); })()}</span>
-          </div>
-          <div className="timeline-tooltip-row">
-            <span>Status</span>
-            <span className="timeline-tooltip-val" style={{ color: STATUS_COLORS[tooltip.customer.status] || "inherit" }}>{statusMeta(tooltip.customer.status).label}</span>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
+
 
 export default function LeaseTracker() {
   const { user, signOut } = useAuth();
@@ -1872,7 +1741,7 @@ export default function LeaseTracker() {
 
         {/* MAIN */}
         <div className="main-wrapper">
-          {activeView === "timeline" ? <TimelineView customers={customers} isDayMode={isDayMode} onSelectCustomer={(id) => { setActiveView("maturities"); setTimeout(() => openPanel(id), 50); }} /> : null}
+          {activeView === "timeline" ? <TimelineView customers={customers} isDayMode={isDayMode} openPanel={openPanel} /> : null}
           <div className="list-panel" style={{ display: activeView === "maturities" ? "flex" : "none" }}>
 
             <div className="topbar">
@@ -2014,7 +1883,10 @@ export default function LeaseTracker() {
             </div>
           </div>
 
-          {/* DETAIL PANEL */}
+
+        </div>
+
+                    {/* DETAIL PANEL */}
           {panelVisible && c && (
             <>
               <div className="detail-backdrop" onClick={closePanel} />
@@ -2269,7 +2141,6 @@ export default function LeaseTracker() {
               </div>
             </>
           )}
-        </div>
 
         {/* ADD CUSTOMER MODAL */}
         {showModal && (

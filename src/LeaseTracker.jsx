@@ -706,7 +706,7 @@ const css = `
 
   /* ── DETAIL PANEL ── */
   .detail-backdrop { position: fixed; inset: 0; z-index: 19; background: var(--overlay-bg); backdrop-filter: blur(4px); animation: fadeIn 0.12s ease; }
-  .app.day .detail-backdrop { backdrop-filter: blur(0px); }
+  .app.day .detail-backdrop { backdrop-filter: blur(4px); }
 
   .detail-panel {
     position: absolute; top: 0; right: 0; bottom: 0; width: 55%;
@@ -911,10 +911,13 @@ const css = `
   .tl-month.is-current { border-color: var(--border-input-focus); }
   .tl-month-header {
     padding: 10px 14px 9px; border-bottom: 1px solid var(--border-main);
-    display: flex; align-items: baseline; justify-content: space-between; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
   }
+  .tl-month.is-current .tl-month-header { background: rgba(74,143,212,0.06); }
+  .app.day .tl-month.is-current .tl-month-header { background: rgba(99,102,241,0.05); }
   .tl-month-name { font-size: 12px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.1px; }
   .tl-month.is-current .tl-month-name { color: var(--border-input-focus); }
+  .tl-month-this { font-size: 9px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--border-input-focus); opacity: 0.7; margin-left: 7px; }
   .tl-month-count {
     font-size: 10px; font-weight: 500; color: var(--text-secondary);
     background: var(--bg-hover-sm); border-radius: 10px; padding: 1px 7px;
@@ -936,15 +939,19 @@ const css = `
     display: flex; flex-direction: column; gap: 5px;
   }
   .tl-card:hover { border-color: var(--border-input-focus); background: var(--bg-hover); transform: translateY(-1px); }
-  .tl-card.urgent { border-left: 3px solid #7aa4e0; }
-  .tl-card.soon   { border-left: 3px solid #5a84c0; }
-  .tl-card.later  { border-left: 3px solid var(--border-input); }
+  .tl-card.urgent { border-top: 2px solid #7aa4e0; }
 
   .tl-card-name { font-size: 12.5px; font-weight: 500; color: var(--text-name); letter-spacing: -0.1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .tl-card-vehicle { font-size: 11px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .tl-card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 2px; }
   .tl-card-time { font-size: 10.5px; font-weight: 600; }
   .tl-card-status { font-size: 10px; font-weight: 500; padding: 1px 6px; border-radius: 3px; }
+  .tl-card-badges { display: flex; align-items: center; gap: 5px; margin-top: 4px; flex-wrap: wrap; }
+  .tl-badge-incentive { font-size: 9.5px; font-weight: 600; padding: 1px 6px; border-radius: 3px; background: rgba(251,191,36,0.12); color: #d97706; border: 1px solid rgba(251,191,36,0.25); letter-spacing: 0.1px; }
+  .app:not(.day) .tl-badge-incentive { background: rgba(251,191,36,0.1); color: #f59e0b; border-color: rgba(251,191,36,0.2); }
+  .tl-badge-miles { font-size: 9.5px; font-weight: 600; padding: 1px 6px; border-radius: 3px; background: rgba(239,68,68,0.1); color: #dc2626; border: 1px solid rgba(239,68,68,0.2); letter-spacing: 0.1px; }
+  .app:not(.day) .tl-badge-miles { background: rgba(248,113,113,0.1); color: #f87171; border-color: rgba(248,113,113,0.2); }
+  .tl-card-date { font-size: 10px; color: var(--text-tertiary); margin-top: 1px; }
 
   .tl-panel-overlay {
     position: absolute; top: 0; right: 0; bottom: 0;
@@ -1061,12 +1068,12 @@ function ToastContainer({ toasts, isDayMode }) {
 
 // ── TIMELINE VIEW ─────────────────────────────────────────────────────────────
 
-function TimelineView({ customers, isDayMode, openPanel }) {
+function TimelineView({ customers, isDayMode, openPanel, openModal }) {
   const now    = new Date();
   const MONTHS = 12;
   const MONTH_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const [tlSearch, setTlSearch] = useState("");
 
-  // Build 12 month buckets from today forward
   const months = useMemo(() => (
     Array.from({ length: MONTHS }, (_, i) =>
       new Date(now.getFullYear(), now.getMonth() + i, 1)
@@ -1077,84 +1084,101 @@ function TimelineView({ customers, isDayMode, openPanel }) {
     const map = new Map();
     months.forEach(m => map.set(`${m.getFullYear()}-${m.getMonth()}`, []));
     const todayStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const q = tlSearch.toLowerCase();
     customers.forEach(c => {
       const end = smartParseDate(c.leaseEnd);
       if (!end || end < todayStart) return;
+      if (q) {
+        const searchable = [c.name, c.model, c.bank, c.trim, c.vin, statusMeta(c.status)?.label].filter(Boolean).join(" ").toLowerCase();
+        if (!searchable.includes(q)) return;
+      }
       const key = `${end.getFullYear()}-${end.getMonth()}`;
       if (map.has(key)) map.get(key).push(c);
     });
     map.forEach(arr => arr.sort((a,b) => parseDateVal(a.leaseEnd) - parseDateVal(b.leaseEnd)));
     return map;
-  }, [customers, months]);
+  }, [customers, months, tlSearch]);
+
+  // Only show months that have customers
+  const activeMonths = useMemo(() =>
+    months.filter(m => (buckets.get(`${m.getFullYear()}-${m.getMonth()}`) || []).length > 0)
+  , [months, buckets]);
 
   const total = useMemo(() => { let n = 0; buckets.forEach(a => n += a.length); return n; }, [buckets]);
 
   return (
     <div className="timeline-panel">
-      {/* Topbar */}
       <div className="timeline-topbar">
         <span className="timeline-title">Lease End Timeline</span>
-        <span style={{ fontSize: 11.5, color: "var(--text-secondary)" }}>
-          {total} lease{total !== 1 ? "s" : ""} in the next 12 months
-        </span>
         <div className="spacer" />
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          {[
-            { label: "This month", color: "#7aa4e0" },
-            { label: "1–3 months", color: "#5a84c0" },
-            { label: "4+ months",  color: "var(--text-muted)" },
-          ].map(l => (
-            <div key={l.label} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10.5, color: "var(--text-secondary)" }}>
-              <div style={{ width: 3, height: 14, borderRadius: 2, background: l.color, flexShrink: 0 }} />
-              {l.label}
-            </div>
-          ))}
-        </div>
+        <input
+          className="search-box"
+          placeholder="Search..."
+          value={tlSearch}
+          onChange={e => setTlSearch(e.target.value)}
+        />
+        <button className="btn-primary" onClick={openModal}>
+          <UserPlus size={13} strokeWidth={2} />New Customer
+        </button>
       </div>
 
-      {/* Buckets */}
       <div className="timeline-body">
         {total === 0 ? (
           <div className="timeline-empty-state">
-            <span className="timeline-empty-state-title">No upcoming lease ends</span>
-            <span className="timeline-empty-state-sub">Add customers with lease end dates to see them here</span>
+            <span className="timeline-empty-state-title">{tlSearch ? "No matches found" : "No upcoming lease ends"}</span>
+            <span className="timeline-empty-state-sub">{tlSearch ? "Try a different search" : "Add customers with lease end dates to see them here"}</span>
           </div>
         ) : (
           <div className="timeline-months-row">
-            {months.map((m, mi) => {
-              const key    = `${m.getFullYear()}-${m.getMonth()}`;
-              const cards  = buckets.get(key) || [];
-              const isCurrent = mi === 0;
+            {activeMonths.map(m => {
+              const key       = `${m.getFullYear()}-${m.getMonth()}`;
+              const cards     = buckets.get(key) || [];
+              const isCurrent = m.getFullYear() === now.getFullYear() && m.getMonth() === now.getMonth();
 
               return (
                 <div key={key} className={`tl-month${isCurrent ? " is-current" : ""}`}>
                   <div className="tl-month-header">
-                    <span className="tl-month-name">
-                      {MONTH_SHORT[m.getMonth()]} {m.getFullYear()}
-                      {isCurrent ? <span style={{ marginLeft: 6, fontSize: 9, fontWeight: 600, letterSpacing: "0.4px", textTransform: "uppercase", opacity: 0.7 }}>This month</span> : null}
-                    </span>
-                    {cards.length > 0 && <span className="tl-month-count">{cards.length}</span>}
+                    <div style={{ display: "flex", alignItems: "center" }}>
+                      <span className="tl-month-name">{MONTH_SHORT[m.getMonth()]} {m.getFullYear()}</span>
+                      {isCurrent && <span className="tl-month-this">Now</span>}
+                    </div>
+                    <span className="tl-month-count">{cards.length}</span>
                   </div>
                   <div className="tl-month-cards">
-                    {cards.length === 0 ? (
-                      <div className="tl-empty"><span className="tl-empty-text">—</span></div>
-                    ) : cards.map(c => {
-                      const ml       = calcMonthsLeft(c.leaseEnd);
-                      const dl       = calcDaysLeft(c.leaseEnd);
-                      const urgency  = ml === 0 ? "urgent" : ml <= 3 ? "soon" : "later";
-                      const barColor = ml === 0 ? "#7aa4e0" : ml <= 3 ? "#5a84c0" : "var(--text-muted)";
-                      const timeStr  = ml === 0 ? (dl <= 0 ? "Today" : `${dl}d left`) : `${ml} mo`;
-                      const sm       = statusMeta(c.status);
-                      const vehicle  = [c.year, c.model, c.trim && c.trim !== "—" ? c.trim : null].filter(Boolean).join(" ");
+                    {cards.map(c => {
+                      const ml        = calcMonthsLeft(c.leaseEnd);
+                      const dl        = calcDaysLeft(c.leaseEnd);
+                      const urgency   = ml === 0 ? "urgent" : ml <= 3 ? "soon" : "later";
+                      const timeColor = ml === 0 ? "#7aa4e0" : ml <= 3 ? "#5a84c0" : "var(--text-secondary)";
+                      const timeStr   = ml === 0 ? (dl <= 0 ? "Today" : `${dl}d left`) : `${ml} mo`;
+                      const sm        = statusMeta(c.status);
+                      const vehicle   = [c.year, c.model, c.trim && c.trim !== "—" ? c.trim : null].filter(Boolean).join(" ");
+                      const hasIncentive = c.privateIncentive > 0;
+                      const mp        = calcMileagePace(c);
+                      const hasMiles  = mp && (mp.status === "over" || mp.status === "warning");
 
                       return (
                         <div key={c.id} className={`tl-card ${urgency}`} onClick={() => openPanel(c.id)}>
                           <span className="tl-card-name">{c.name}</span>
                           {vehicle && <span className="tl-card-vehicle">{vehicle}</span>}
                           <div className="tl-card-footer">
-                            <span className="tl-card-time" style={{ color: barColor }}>{timeStr}</span>
+                            <span className="tl-card-time" style={{ color: timeColor }}>{timeStr}</span>
                             <span className="tl-card-status" style={{ background: sm.color + "22", color: sm.color }}>{sm.label}</span>
                           </div>
+                          {(hasIncentive || hasMiles) && (
+                            <div className="tl-card-badges">
+                              {hasIncentive && (
+                                <span className="tl-badge-incentive">
+                                  ${Number(c.privateIncentive).toLocaleString()} incentive{c.incentiveExp && c.incentiveExp !== "—" ? ` · ${c.incentiveExp}` : ""}
+                                </span>
+                              )}
+                              {hasMiles && (
+                                <span className="tl-badge-miles">
+                                  {mp.status === "over" ? `+${Math.abs(mp.overage).toLocaleString()} mi over` : "miles at risk"}
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -1168,6 +1192,7 @@ function TimelineView({ customers, isDayMode, openPanel }) {
     </div>
   );
 }
+
 
 
 export default function LeaseTracker() {
@@ -1741,7 +1766,7 @@ export default function LeaseTracker() {
 
         {/* MAIN */}
         <div className="main-wrapper">
-          {activeView === "timeline" ? <TimelineView customers={customers} isDayMode={isDayMode} openPanel={openPanel} /> : null}
+          {activeView === "timeline" ? <TimelineView customers={customers} isDayMode={isDayMode} openPanel={openPanel} openModal={openModal} /> : null}
           <div className="list-panel" style={{ display: activeView === "maturities" ? "flex" : "none" }}>
 
             <div className="topbar">

@@ -1273,7 +1273,7 @@ function saveDirectory(entries) {
   try { localStorage.setItem(DIR_STORAGE_KEY, JSON.stringify(entries)); } catch {}
 }
 
-const EMPTY_DIR_FORM = { name: '', role: '', department: '', extension: '', directLine: '' };
+const EMPTY_DIR_FORM = { name: '', role: '', department: '', extension: '' };
 
 function DirectoryView({ isDayMode }) {
   const [entries,    setEntries]    = useState(loadDirectory);
@@ -1286,7 +1286,7 @@ function DirectoryView({ isDayMode }) {
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
     return q
-      ? entries.filter(e => [e.name, e.role, e.department, e.extension, e.directLine].join(' ').toLowerCase().includes(q))
+      ? entries.filter(e => [e.name, e.role, e.department, e.extension].join(' ').toLowerCase().includes(q))
       : entries;
   }, [entries, search]);
 
@@ -1309,7 +1309,7 @@ function DirectoryView({ isDayMode }) {
   const initials = (name) => name.trim().split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
 
   const openAdd = () => { setForm(EMPTY_DIR_FORM); setEditId(null); setShowModal(true); };
-  const openEdit = (e) => { setForm({ name: e.name, role: e.role, department: e.department, extension: e.extension, directLine: e.directLine }); setEditId(e.id); setShowModal(true); };
+  const openEdit = (e) => { setForm({ name: e.name, role: e.role, department: e.department, extension: e.extension }); setEditId(e.id); setShowModal(true); };
 
   const handleSave = () => {
     if (!form.name.trim()) return;
@@ -1373,9 +1373,8 @@ function DirectoryView({ isDayMode }) {
                     {e.role && <div className="dir-role">{e.role}</div>}
                   </div>
                   <div className="dir-ext-wrap">
-                    {e.directLine && <span className="dir-phone">{e.directLine}</span>}
                     {e.extension && (
-                      <span className="dir-ext" title="Extension">x{e.extension}</span>
+                      <span className="dir-ext" title="Extension">{e.extension}</span>
                     )}
                   </div>
                   <div className="dir-actions">
@@ -1406,9 +1405,7 @@ function DirectoryView({ isDayMode }) {
                 {field('Department', 'department', 'Sales')}
                 {field('Extension', 'extension', '1042')}
               </div>
-              <div className="modal-row cols-1">
-                {field('Direct Line', 'directLine', '(201) 555-0182', { full: true })}
-              </div>
+
             </div>
             <div className="modal-footer">
               <button className="btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>

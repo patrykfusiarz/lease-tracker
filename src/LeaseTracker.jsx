@@ -2,7 +2,7 @@ import { useReducer, useMemo, useState, useEffect, useRef, useCallback } from "r
 import { useAuth } from "./auth";
 import { SettingsModal } from "./SettingsModal";
 import { supabase } from "./supabase";
-import { Layers, LogOut, UserPlus, X, ChevronsUpDown, ChevronUp, ChevronDown, Pencil, Check, Trash2, Sun, Moon, ChevronLeft, ChevronRight, AlignJustify, Settings, CalendarRange, Users, Plus } from "lucide-react";
+import { Layers, LogOut, UserPlus, X, ChevronsUpDown, ChevronUp, ChevronDown, Pencil, Check, Trash2, Sun, Moon, ChevronLeft, ChevronRight, AlignJustify, Settings, CalendarRange, Users, Plus, Calculator } from "lucide-react";
 
 // ── CONSTANTS ─────────────────────────────────────────────────────────────────
 
@@ -1038,6 +1038,75 @@ const css = `
   .dir-empty-sub { font-size: 12px; color: var(--text-muted); }
   .dir-modal { background: var(--bg-panel); border: 1px solid var(--border-card); border-radius: 14px; width: 420px; overflow: hidden; box-shadow: 0 32px 80px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.04); animation: modalIn 0.15s cubic-bezier(0.16,1,0.3,1); }
   .app.day .dir-modal { box-shadow: 0 8px 40px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.05); border-color: #e8eaef; }
+
+  /* ── CALCULATOR VIEW ── */
+  .calc-panel {
+    flex: 1; display: flex; flex-direction: column; overflow: hidden;
+    background: var(--bg-panel); border-radius: 10px;
+    border: 1px solid var(--border-card);
+    box-shadow: 0 0 0 1px var(--shadow-panel), 0 8px 32px var(--shadow-panel);
+    animation: fadeIn 0.18s ease;
+  }
+  .app.day .calc-panel { border: 1px solid #e8eaef; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+  .calc-topbar {
+    display: flex; align-items: center; gap: 10px; padding: 0 18px;
+    height: 46px; border-bottom: 1px solid var(--border-main);
+    flex-shrink: 0; background: var(--bg-panel); border-radius: 10px 10px 0 0;
+  }
+  .calc-title { font-size: 16px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.3px; }
+  .calc-body {
+    flex: 1; overflow-y: auto; padding: 20px;
+    display: flex; gap: 16px; align-items: flex-start;
+  }
+  .calc-body::-webkit-scrollbar { width: 4px; }
+  .calc-body::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 3px; }
+  .calc-card {
+    flex: 1; background: var(--bg-card); border: 1px solid var(--border-card);
+    border-radius: 10px; overflow: hidden; min-width: 0;
+  }
+  .calc-card-header {
+    padding: 12px 16px; border-bottom: 1px solid var(--border-main);
+    background: var(--bg-input); text-align: center;
+  }
+  .calc-card-title { font-size: 13px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.1px; }
+  .calc-table { width: 100%; border-collapse: collapse; }
+  .calc-row { border-bottom: 1px solid var(--border-main); }
+  .calc-row:last-child { border-bottom: none; }
+  .calc-label {
+    padding: 9px 14px; font-size: 12.5px; color: var(--text-cell);
+    width: 55%; vertical-align: middle;
+  }
+  .calc-label.italic { font-style: italic; color: var(--text-secondary); }
+  .calc-label.bold { font-weight: 600; color: var(--text-primary); }
+  .calc-value {
+    padding: 9px 14px; font-size: 12.5px; color: var(--text-cell);
+    text-align: right; vertical-align: middle; font-variant-numeric: tabular-nums;
+  }
+  .calc-value.bold { font-weight: 600; color: var(--text-primary); }
+  .calc-row.subtotal { background: var(--bg-input); }
+  .calc-row.total-row { background: var(--bg-input); border-top: 2px solid var(--border-input); }
+  .calc-row.total-row .calc-label,
+  .calc-row.total-row .calc-value { font-size: 13.5px; font-weight: 700; color: var(--text-primary); padding: 12px 14px; }
+  .calc-input-cell { padding: 5px 10px; text-align: right; }
+  .calc-input {
+    background: var(--bg-input-meta); border: 1px solid var(--border-input);
+    border-radius: 5px; padding: 4px 8px; font-size: 12.5px;
+    font-family: 'Inter', sans-serif; color: var(--text-primary);
+    outline: none; width: 110px; text-align: right;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    font-variant-numeric: tabular-nums;
+  }
+  .calc-input:focus { border-color: var(--border-input-focus); }
+  .app.day .calc-input:focus { box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
+  .calc-reset-btn {
+    display: flex; align-items: center; gap: 5px;
+    padding: 0 10px; height: 26px; border-radius: 6px;
+    border: 1px solid var(--border-input); background: transparent;
+    font-size: 11.5px; font-family: 'Inter', sans-serif;
+    color: var(--text-secondary); cursor: pointer;
+    transition: background 0.1s, color 0.1s;
+  }
+  .calc-reset-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
 `;
 
 // ── Animated Number ───────────────────────────────────────────────────────────
@@ -1260,6 +1329,189 @@ function TimelineView({ customers, isDayMode, openPanel, openModal }) {
   );
 }
 
+
+
+// ── CALCULATOR VIEW ───────────────────────────────────────────────────────────
+
+const NJ_CAR_BASE   = 10.31;
+const NJ_CAR_TRADE  = 14.46;
+const DOC_FEE       = 695.00;
+const DEFAULT_TAX   = '6.625';
+const LUX_THRESHOLD = 45000;
+const LUX_RATE      = 0.004;
+
+function parseMoney(str) {
+  const n = parseFloat(String(str).replace(/[$,]/g, ''));
+  return isNaN(n) ? 0 : n;
+}
+
+function fmt(n) {
+  return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// isNew: true = New Car (appearance, tire fee, lux tax); false = Used Car (none of those)
+function CarCalc({ title, isNew, isDayMode }) {
+  const [salePrice,    setSalePrice]    = useState('');
+  const [appearance,   setAppearance]   = useState(isNew ? '495' : '');
+  const [trade,        setTrade]        = useState('');
+  const [registration, setRegistration] = useState('');
+  const [taxRateStr,   setTaxRateStr]   = useState(DEFAULT_TAX);
+  const [editingTax,   setEditingTax]   = useState(false);
+
+  const sale    = parseMoney(salePrice);
+  const app     = isNew ? parseMoney(appearance) : 0;
+  const tr      = parseMoney(trade);
+  const reg     = parseMoney(registration);
+  const njCar   = tr > 0 ? NJ_CAR_TRADE : NJ_CAR_BASE;
+  const taxRate = (parseFloat(taxRateStr) || 0) / 100;
+
+  const taxable  = sale + app + njCar + DOC_FEE - tr;
+  const salesTax = taxable * taxRate;
+  const tireFee  = isNew ? 7.50 : 0;
+  const luxTax   = isNew && sale > LUX_THRESHOLD ? (sale - LUX_THRESHOLD) * LUX_RATE : 0;
+  const total    = taxable + salesTax + tireFee + reg + luxTax;
+
+  const reset = () => {
+    setSalePrice('');
+    setAppearance(isNew ? '495' : '');
+    setTrade('');
+    setRegistration('');
+    setTaxRateStr(DEFAULT_TAX);
+  };
+
+  const inputCell = (value, setter, placeholder) => (
+    <td className="calc-input-cell">
+      <input
+        className="calc-input"
+        value={value}
+        placeholder={placeholder || '0.00'}
+        onChange={e => setter(e.target.value)}
+        onFocus={e => e.target.select()}
+      />
+    </td>
+  );
+
+  const staticCell = (val, opts = {}) => (
+    <td className={`calc-value${opts.bold ? ' bold' : ''}`} style={opts.style}>{fmt(val)}</td>
+  );
+
+  return (
+    <div className="calc-card">
+      <div className="calc-card-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span className="calc-card-title">{title}</span>
+        <button className="calc-reset-btn" onClick={reset}>Reset</button>
+      </div>
+      <table className="calc-table">
+        <tbody>
+          {/* Final Sale Price */}
+          <tr className="calc-row">
+            <td className="calc-label bold">Final Sale Price</td>
+            {inputCell(salePrice, setSalePrice, '0.00')}
+          </tr>
+          {/* Appearance — New Car only */}
+          {isNew && (
+            <tr className="calc-row">
+              <td className="calc-label">Appearance Package</td>
+              {inputCell(appearance, setAppearance, '495.00')}
+            </tr>
+          )}
+          {/* Trade */}
+          <tr className="calc-row">
+            <td className="calc-label italic">Trade</td>
+            {inputCell(trade, setTrade, '0.00')}
+          </tr>
+          {/* NJ Car — auto-switches with trade */}
+          <tr className="calc-row">
+            <td className="calc-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              NJ Car
+              {tr > 0 && <span style={{ fontSize: 9.5, color: isDayMode ? '#d97706' : '#f59e0b', fontWeight: 600 }}>w/ trade</span>}
+            </td>
+            {staticCell(njCar)}
+          </tr>
+          {/* Doc Fee */}
+          <tr className="calc-row">
+            <td className="calc-label">Doc Fee</td>
+            {staticCell(DOC_FEE)}
+          </tr>
+          {/* Taxable */}
+          <tr className="calc-row subtotal">
+            <td className="calc-label bold">Taxable</td>
+            <td className="calc-value bold">{fmt(taxable)}</td>
+          </tr>
+          {/* Sales Tax — editable rate */}
+          <tr className="calc-row">
+            <td className="calc-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              Sales Tax
+              {editingTax ? (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                  <input
+                    style={{
+                      width: 44, background: 'var(--bg-input-meta)', border: '1px solid var(--border-input-focus)',
+                      borderRadius: 4, padding: '1px 4px', fontSize: 11.5, color: 'var(--text-primary)',
+                      fontFamily: 'Inter, sans-serif', outline: 'none', textAlign: 'right',
+                    }}
+                    value={taxRateStr}
+                    onChange={e => setTaxRateStr(e.target.value)}
+                    onBlur={() => setEditingTax(false)}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') setEditingTax(false); }}
+                    autoFocus
+                    onFocus={e => e.target.select()}
+                  />
+                  <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>%</span>
+                </span>
+              ) : (
+                <span
+                  onClick={() => setEditingTax(true)}
+                  style={{ fontSize: 10.5, color: 'var(--border-input-focus)', cursor: 'pointer', fontWeight: 500, letterSpacing: 0.1 }}
+                  title="Click to edit rate"
+                >{taxRateStr}%</span>
+              )}
+            </td>
+            <td className="calc-value">{fmt(salesTax)}</td>
+          </tr>
+          {/* Tire Fee — New Car only */}
+          {isNew && (
+            <tr className="calc-row">
+              <td className="calc-label">Tire Fee</td>
+              {staticCell(tireFee)}
+            </tr>
+          )}
+          {/* Registration */}
+          <tr className="calc-row">
+            <td className="calc-label">Registration</td>
+            {inputCell(registration, setRegistration, '0.00')}
+          </tr>
+          {/* Lux Tax — New Car only */}
+          {isNew && (
+            <tr className="calc-row">
+              <td className="calc-label">Lux Tax</td>
+              {staticCell(luxTax, { style: luxTax > 0 ? { color: isDayMode ? '#d97706' : '#f59e0b' } : undefined })}
+            </tr>
+          )}
+          {/* Total */}
+          <tr className="calc-row total-row">
+            <td className="calc-label bold">Total</td>
+            <td className="calc-value bold">{fmt(total)}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function CalculatorView({ isDayMode }) {
+  return (
+    <div className="calc-panel">
+      <div className="calc-topbar">
+        <span className="calc-title">Calculator</span>
+      </div>
+      <div className="calc-body">
+        <CarCalc title="New Car" isNew={true} isDayMode={isDayMode} />
+        <CarCalc title="Used Car" isNew={false} isDayMode={isDayMode} />
+      </div>
+    </div>
+  );
+}
 
 
 // ── DIRECTORY VIEW ────────────────────────────────────────────────────────────
@@ -1988,6 +2240,10 @@ export default function LeaseTracker() {
               <span className="nav-item-label">Timeline</span>
             </div>
             <div className="sidebar-section-label">Tools</div>
+            <div className={`nav-item ${activeView === "calculator" ? "active" : ""}`} onClick={() => setActiveView("calculator")}>
+              <span className="nav-icon"><Calculator size={14} strokeWidth={1.75} /></span>
+              <span className="nav-item-label">Calculator</span>
+            </div>
             <div className={`nav-item ${activeView === "directory" ? "active" : ""}`} onClick={() => setActiveView("directory")}>
               <span className="nav-icon"><Users size={14} strokeWidth={1.75} /></span>
               <span className="nav-item-label">Directory</span>
@@ -2018,6 +2274,7 @@ export default function LeaseTracker() {
         {/* MAIN */}
         <div className="main-wrapper">
           {activeView === "timeline" ? <TimelineView customers={customers} isDayMode={isDayMode} openPanel={openPanel} openModal={openModal} /> : null}
+          {activeView === "calculator" ? <CalculatorView isDayMode={isDayMode} /> : null}
           {activeView === "directory" ? <DirectoryView isDayMode={isDayMode} /> : null}
           <div className="list-panel" style={{ display: activeView === "maturities" ? "flex" : "none" }}>
 

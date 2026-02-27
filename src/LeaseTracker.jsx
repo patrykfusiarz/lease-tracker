@@ -426,7 +426,26 @@ const css = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Inter', sans-serif; height: 100vh; overflow: hidden; background: #0c0c0e; }
+  body { font-family: 'Inter', sans-serif; height: 100vh; overflow: hidden; background: #0c0c0e; -webkit-font-smoothing: antialiased; }
+
+  /* ── WINDOWS FONT RENDERING — bump thin weights for ClearType ── */
+  .app.win body, .app.win,
+  .app.win .cell-year, .app.win .cell-model, .app.win .cell-trim,
+  .app.win .cell-miles, .app.win .cell-lease-end, .app.win .cell-incentive-exp,
+  .app.win .months-badge, .app.win .cell-incentive,
+  .app.win .detail-lead-name, .app.win .detail-lead-sub,
+  .app.win .detail-meta-value, .app.win .detail-meta-label,
+  .app.win .note-entry-text, .app.win .notes-saved-at,
+  .app.win .nav-item, .app.win .modal-name-input,
+  .app.win .modal-field input, .app.win .modal-field select,
+  .app.win .meta-input, .app.win .toast-detail,
+  .app.win .tl-card-vehicle, .app.win .tl-card-time,
+  .app.win .stat-label, .app.win .dir-role, .app.win .dir-phone {
+    font-weight: 500;
+    -webkit-font-smoothing: auto;
+  }
+  .app.win .cell-name, .app.win .tl-card-name { font-weight: 600; }
+  .app.win .detail-lead-name { font-weight: 500; }
   body:has(.app.day) { background: #f2f3f5; }
 
   .app {
@@ -1248,6 +1267,7 @@ export default function LeaseTracker() {
   const [isDayMode,  setIsDayMode]  = useState(() => {
     try { const saved = localStorage.getItem('lt_theme'); return saved !== null ? saved === 'day' : true; } catch { return true; }
   });
+  const isWindows = typeof navigator !== 'undefined' && /Win/i.test(navigator.platform || navigator.userAgent);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [density, setDensity] = useState(() => { try { return JSON.parse(localStorage.getItem("lt-prefs") || "{}").density || "comfortable"; } catch { return "comfortable"; } });
   const [flashingStatus, setFlashingStatus] = useState(null);
@@ -1725,7 +1745,7 @@ export default function LeaseTracker() {
   return (
     <>
       <style>{css}</style>
-      <div className={`app${isDayMode ? " day" : ""}`}>
+      <div className={`app${isDayMode ? " day" : ""}${isWindows ? " win" : ""}`}>
 
         {/* SIDEBAR */}
         <aside className={`sidebar${sidebarCollapsed ? " collapsed" : ""}`}>

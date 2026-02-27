@@ -1161,16 +1161,12 @@ const css = `
   /* Total row */
   .calc-total-row {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 16px 18px; margin: 0;
+    padding: 0 18px; min-height: 42px;
     background: var(--bg-input);
     border-top: 2px solid var(--border-input);
   }
-  .calc-total-label { font-size: 14px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.3px; }
-  .calc-total-value {
-    font-size: 15px; font-weight: 700; color: var(--text-primary);
-    letter-spacing: -0.4px; font-variant-numeric: tabular-nums;
-  }
-  .app.day .calc-total-value { color: #111827; }
+  .calc-total-label { font-size: 12.5px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.1px; }
+  .calc-total-value { font-size: 13px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.2px; font-variant-numeric: tabular-nums; }
 
   /* Trade badge */
   .calc-trade-badge {

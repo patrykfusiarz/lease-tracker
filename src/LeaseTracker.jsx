@@ -1139,44 +1139,6 @@ export default function LeaseTracker() {
     openPanel(id);
   }, [selected, panelState, openPanel]);
 
-  // ── Keyboard navigation ──
-  useEffect(() => {
-    const handler = (e) => {
-      // Don't intercept when typing in inputs/textareas
-      const tag = document.activeElement?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
-
-      if (e.key === "Escape") {
-        if (editMode)       { setEditMode(false); return; }
-        if (panelState === "open") { closePanel(); return; }
-        if (showModal)      { setShowModal(false); return; }
-        if (confirmDel)     { setConfirmDel(null); return; }
-        if (statFilter)     { setStatFilter(null); return; }
-      }
-
-      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-        e.preventDefault();
-        if (filtered.length === 0) return;
-        const idx = filtered.findIndex(r => r.id === selected);
-        let next;
-        if (e.key === "ArrowDown") next = idx === -1 ? 0 : Math.min(idx + 1, filtered.length - 1);
-        else                       next = idx === -1 ? filtered.length - 1 : Math.max(idx - 1, 0);
-        openPanel(filtered[next].id);
-      }
-
-      if (e.key === "Enter" && selected && panelState === "open" && !editMode) {
-        startEdit(snapCustomer);
-      }
-
-      if (e.key === "n" && !e.metaKey && !e.ctrlKey && panelState !== "open" && !showModal) {
-        setShowModal(true);
-        setModalTab("pick");
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [filtered, selected, panelState, editMode, showModal, confirmDel, statFilter, snapCustomer, openPanel, closePanel, startEdit]);
-
   // ── Notes ──
   // useEffect runs after DOM commit so ref is guaranteed populated when notesOpen flips true
   useEffect(() => {
@@ -1423,6 +1385,44 @@ export default function LeaseTracker() {
 
   const panelVisible = panelState !== "closed";
   const c = snapCustomer;
+
+  // ── Keyboard navigation ──
+  useEffect(() => {
+    const handler = (e) => {
+      // Don't intercept when typing in inputs/textareas
+      const tag = document.activeElement?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+
+      if (e.key === "Escape") {
+        if (editMode)       { setEditMode(false); return; }
+        if (panelState === "open") { closePanel(); return; }
+        if (showModal)      { setShowModal(false); return; }
+        if (confirmDel)     { setConfirmDel(null); return; }
+        if (statFilter)     { setStatFilter(null); return; }
+      }
+
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        if (filtered.length === 0) return;
+        const idx = filtered.findIndex(r => r.id === selected);
+        let next;
+        if (e.key === "ArrowDown") next = idx === -1 ? 0 : Math.min(idx + 1, filtered.length - 1);
+        else                       next = idx === -1 ? filtered.length - 1 : Math.max(idx - 1, 0);
+        openPanel(filtered[next].id);
+      }
+
+      if (e.key === "Enter" && selected && panelState === "open" && !editMode) {
+        startEdit(snapCustomer);
+      }
+
+      if (e.key === "n" && !e.metaKey && !e.ctrlKey && panelState !== "open" && !showModal) {
+        setShowModal(true);
+        setModalTab("pick");
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [filtered, selected, panelState, editMode, showModal, confirmDel, statFilter, snapCustomer, openPanel, closePanel, startEdit]);
 
   // ── Render ──
 

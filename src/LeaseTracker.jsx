@@ -685,6 +685,19 @@ const css = `
   .status-option.active { border-color: transparent; color: #fff; font-weight: 600; }
   .status-option.flashing { animation: statusFlash 0.3s ease; }
   .status-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .status-cell { display: flex; align-items: center; gap: 5px; flex-wrap: nowrap; overflow: hidden; }
+  .signal-tag { display: inline-flex; align-items: center; font-size: 9.5px; font-weight: 600; padding: 1px 6px; border-radius: 3px; white-space: nowrap; letter-spacing: 0.1px; flex-shrink: 0; }
+  .signal-tag.miles { background: rgba(248,113,113,0.12); color: #f87171; border: 1px solid rgba(248,113,113,0.25); }
+  .signal-tag.miles-warn { background: rgba(251,191,36,0.12); color: #f59e0b; border: 1px solid rgba(251,191,36,0.25); }
+  .signal-tag.accident { background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
+  .app.day .signal-tag.miles { background: rgba(220,38,38,0.08); color: #dc2626; border-color: rgba(220,38,38,0.2); }
+  .app.day .signal-tag.miles-warn { background: rgba(217,119,6,0.08); color: #d97706; border-color: rgba(217,119,6,0.2); }
+  .app.day .signal-tag.accident { background: rgba(220,38,38,0.08); color: #dc2626; border-color: rgba(220,38,38,0.2); }
+  .accident-toggle { display: flex; align-items: center; gap: 8px; padding: 10px 14px; cursor: pointer; user-select: none; }
+  .accident-checkbox { width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--border-input); background: var(--bg-input); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background 0.1s, border-color 0.1s; }
+  .accident-checkbox.checked { background: rgba(239,68,68,0.2); border-color: #ef4444; }
+  .accident-label { font-size: 12px; color: var(--text-secondary); }
+  .accident-toggle:hover .accident-label { color: var(--text-primary); }
 
   /* ── EMPTY STATE ── */
   .empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 40px; }
@@ -1304,6 +1317,7 @@ export default function LeaseTracker() {
           privateIncentive: c.private_incentive,
           incentiveExp:     c.incentive_exp || "—",
           status:           c.status || "early",
+          hasAccident:      c.has_accident || false,
           updatedAt:        c.updated_at,
         }));
         dispatch({ type: "LOAD_CUSTOMERS", customers: mapped });
@@ -1441,6 +1455,7 @@ export default function LeaseTracker() {
       leaseEnd:         c.leaseEnd === "—" ? "" : c.leaseEnd,
       privateIncentive: c.privateIncentive > 0 ? String(c.privateIncentive) : "",
       incentiveExp:     c.incentiveExp === "—" ? "" : c.incentiveExp,
+      hasAccident:      c.hasAccident || false,
     });
     setEditMode(true);
   }, []);
@@ -1467,6 +1482,7 @@ export default function LeaseTracker() {
       leaseEnd,
       privateIncentive:    form.privateIncentive,
       incentiveExp,
+      hasAccident:         editForm.hasAccident || false,
     };
     const { error } = await supabase.from("customers").update({
       name:              updates.name,
@@ -1484,6 +1500,7 @@ export default function LeaseTracker() {
       lease_end:         updates.leaseEnd === "—" ? null : updates.leaseEnd,
       private_incentive: updates.privateIncentive,
       incentive_exp:     updates.incentiveExp === "—" ? null : updates.incentiveExp,
+      has_accident:      updates.hasAccident,
     }).eq("id", selected);
     setEditSaving(false);
     if (error) { addToast("Save Failed", "error", "Please try again"); return; }
@@ -1576,6 +1593,7 @@ export default function LeaseTracker() {
       lease_end:        customer.leaseEnd === "—" ? null : customer.leaseEnd,
       private_incentive: customer.privateIncentive,
       incentive_exp:    customer.incentiveExp === "—" ? null : customer.incentiveExp,
+      has_accident:     false,
       status:           customer.status,
     });
     if (!error) {
@@ -1862,13 +1880,7 @@ export default function LeaseTracker() {
                       {notes[row.id]?.history?.length > 0 && (
                         <span className="notes-count-badge">{notes[row.id].history.length}</span>
                       )}
-                      {rowMp && rowMp.status !== "ok" && (() => {
-                        const color = rowMp.status === "over" ? "#f87171" : "#f59e0b";
-                        const tip   = rowMp.status === "over"
-                          ? `Over allowance by ~${Math.abs(rowMp.overage).toLocaleString()} mi`
-                          : `On pace to exceed by ~${rowMp.overage.toLocaleString()} mi`;
-                        return <span className="miles-warn-dot" style={{ background: color, boxShadow: `0 0 5px ${color}88` }} title={tip} />;
-                      })()}
+
                     </span>
                     <span className="cell-year">{row.year}</span>
                     <span className="cell-model">{row.model}</span>
@@ -1884,11 +1896,18 @@ export default function LeaseTracker() {
                     <span className="months-badge" style={{ color: mc }}>{lLabel}</span>
                     {(() => {
                       const sm = statusMeta(row.status);
+                      const milesOver = rowMp && rowMp.status === "over";
+                      const milesWarn = rowMp && rowMp.status === "warning";
                       return (
-                        <span className="status-pill" style={{ background: sm.color + "22", borderColor: sm.color + "55", color: sm.color }}>
-                          <span className="status-dot" style={{ background: sm.color }} />
-                          {sm.label}
-                        </span>
+                        <div className="status-cell">
+                          <span className="status-pill" style={{ background: sm.color + "22", borderColor: sm.color + "55", color: sm.color, flexShrink: 0 }}>
+                            <span className="status-dot" style={{ background: sm.color }} />
+                            {sm.label}
+                          </span>
+                          {milesOver && <span className="signal-tag miles">Miles Over</span>}
+                          {!milesOver && milesWarn && <span className="signal-tag miles-warn">Miles Risk</span>}
+                          {row.hasAccident && <span className="signal-tag accident">Accident</span>}
+                        </div>
                       );
                     })()}
                     <div style={{ position: "relative" }}>
@@ -2090,6 +2109,28 @@ export default function LeaseTracker() {
                             })() },
                         ].map(cell)}
                       </div>
+                      </div>
+
+                      {/* Accident flag */}
+                      <div
+                        className="accident-toggle"
+                        onClick={async () => {
+                          if (!editMode) return;
+                          setEditForm(p => ({ ...p, hasAccident: !p.hasAccident }));
+                        }}
+                        style={{ borderTop: "1px solid var(--border-main)", opacity: editMode ? 1 : 1, cursor: editMode ? "pointer" : "default" }}
+                      >
+                        <div className={`accident-checkbox${editMode && editForm.hasAccident ? " checked" : !editMode && c.hasAccident ? " checked" : ""}`}>
+                          {((editMode ? editForm.hasAccident : c.hasAccident)) && (
+                            <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
+                              <path d="M1.5 4.5l2.5 2.5 3.5-4" stroke="#ef4444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          )}
+                        </div>
+                        <span className="accident-label" style={{ color: (editMode ? editForm.hasAccident : c.hasAccident) ? (isDayMode ? "#dc2626" : "#ef4444") : undefined }}>
+                          {(editMode ? editForm.hasAccident : c.hasAccident) ? "Accident reported" : "No accident on record"}
+                          {!editMode && <span style={{ fontSize: 10.5, color: "var(--text-muted)", marginLeft: 6 }}>Edit to change</span>}
+                        </span>
                       </div>
                     </>
                   );
@@ -2401,7 +2442,7 @@ export default function LeaseTracker() {
                     </span>
                   )}
                   <button className="btn-secondary" onClick={closeModal}>Cancel</button>
-                  <button className="btn-primary" onClick={handleAdd}>Add Customer</button>
+                  <button className="btn-primary" onClick={handleAdd} disabled={isDuplicate} style={isDuplicate ? { opacity: 0.4, cursor: "not-allowed" } : {}}>Add Customer</button>
                 </div>
                 </>
               )}

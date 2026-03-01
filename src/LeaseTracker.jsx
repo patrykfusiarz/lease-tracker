@@ -525,8 +525,8 @@ const css = `
     --shadow-modal:    rgba(0,0,0,0.08);
     --overlay-bg:      rgba(17,24,39,0.12);
     --overlay-bg2:     rgba(17,24,39,0.2);
-    --btn-primary-bg:   #8c90cc;
-    --btn-primary-hover: #7b80bc;
+    --btn-primary-bg:   #4f46e5;
+    --btn-primary-hover: #4338ca;
     --btn-primary-text:  #ffffff;
   }
 
@@ -579,6 +579,7 @@ const css = `
 
   .sidebar-body { flex: 1; padding: 6px 8px 8px; display: flex; flex-direction: column; gap: 1px; }
   .sidebar-section-label { font-size: 10px; color: var(--text-section); letter-spacing: 0.4px; text-transform: uppercase; padding: 0 8px; margin-bottom: 3px; margin-top: 10px; font-weight: 600; }
+  .sidebar-section-label:first-child { margin-top: 2px; }
 
   .nav-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; cursor: pointer; font-size: 13px; color: var(--text-nav); font-weight: 400; transition: background 0.08s, color 0.08s; user-select: none; }
   .nav-item:hover { background: var(--bg-hover-sm); color: var(--text-cell); }
@@ -636,7 +637,7 @@ const css = `
   .btn-primary { display: flex; align-items: center; gap: 6px; background: var(--btn-primary-bg); color: var(--btn-primary-text); border: none; border-radius: 7px; padding: 0 13px; height: 30px; font-size: 12.5px; font-family: 'Inter', sans-serif; font-weight: 500; cursor: pointer; transition: background 0.15s; white-space: nowrap; letter-spacing: -0.1px; }
   .btn-primary:hover { background: var(--btn-primary-hover); }
 
-  .btn-secondary { display: flex; align-items: center; gap: 6px; background: transparent; color: var(--text-secondary); border: 1px solid var(--border-input); border-radius: 6px; padding: 5px 12px; font-size: 12px; font-family: 'Inter', sans-serif; font-weight: 500; cursor: pointer; transition: background 0.1s, color 0.1s; white-space: nowrap; }
+  .btn-secondary { display: flex; align-items: center; gap: 6px; background: transparent; color: var(--text-secondary); border: 1px solid var(--border-input); border-radius: 7px; padding: 5px 12px; font-size: 12px; font-family: 'Inter', sans-serif; font-weight: 500; cursor: pointer; transition: background 0.1s, color 0.1s; white-space: nowrap; }
   .btn-secondary:hover { background: var(--bg-hover); color: var(--text-primary); border-color: var(--border-status); }
 
   /* Density */
@@ -651,7 +652,7 @@ const css = `
   .stats-bar { display: flex; border-bottom: 1px solid var(--border-main); flex-shrink: 0; background: var(--bg-panel); }
   .stat-item { flex: 1; padding: 12px 18px 11px; border-right: 1px solid var(--border-main); display: flex; flex-direction: column; gap: 3px; cursor: pointer; transition: background 0.1s; user-select: none; }
   .stat-item:last-child { border-right: none; }
-  .stat-value { font-size: 22px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.5px; line-height: 1.15; }
+  .stat-value { font-size: 18px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.4px; line-height: 1.15; }
   .stat-label { font-size: 10px; color: var(--text-secondary); letter-spacing: 0.2px; font-weight: 500; }
 
   /* ── TABLE ── */
@@ -761,7 +762,7 @@ const css = `
   .detail-panel.enter .detail-body { animation-delay: 0.1s; }
 
   .detail-topbar { display: flex; align-items: center; gap: 8px; padding: 16px 18px 14px; border-bottom: 1px solid var(--border-main); flex-shrink: 0; border-radius: 10px 10px 0 0; background: var(--bg-card); }
-  .detail-lead-name { font-size: 19px; font-weight: 400; color: var(--text-primary); letter-spacing: -0.4px; line-height: 1.2; }
+  .detail-lead-name { font-size: 18px; font-weight: 500; color: var(--text-primary); letter-spacing: -0.4px; line-height: 1.2; }
   .detail-lead-sub  { font-size: 12px; font-weight: 400; color: var(--text-secondary); letter-spacing: -0.1px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .detail-close { display: flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 6px; background: transparent; border: none; cursor: pointer; color: var(--text-secondary); transition: background 0.1s, color 0.1s; margin-left: auto; }
   .detail-close:hover { background: var(--bg-hover); color: var(--text-cell); }
@@ -812,7 +813,7 @@ const css = `
   .notes-textarea::placeholder { color: var(--text-muted); }
   .notes-footer { display: flex; align-items: center; justify-content: space-between; }
   .notes-saved-at { font-size: 10.5px; color: var(--text-muted); }
-  .notes-save-btn { padding: 4px 13px; border-radius: 6px; background: var(--btn-primary-bg); color: var(--btn-primary-text); border: none; font-size: 11.5px; font-family: 'Inter', sans-serif; font-weight: 600; cursor: pointer; transition: opacity 0.15s; }
+  .notes-save-btn { padding: 4px 13px; border-radius: 7px; background: var(--btn-primary-bg); color: var(--btn-primary-text); border: none; font-size: 11.5px; font-family: 'Inter', sans-serif; font-weight: 500; cursor: pointer; transition: opacity 0.15s; }
   .notes-save-btn:hover    { opacity: 0.85; }
   .notes-save-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
@@ -842,8 +843,8 @@ const css = `
   }
   .app.day .modal { box-shadow: 0 8px 40px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.05); border-color: #e8eaef; }
   .modal-topbar { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px 14px; }
-  .modal-name-input { background: transparent; border: none; outline: none; font-size: 16px; font-weight: 400; color: var(--text-primary); font-family: 'Inter', sans-serif; letter-spacing: -0.2px; flex: 1; min-width: 0; }
-  .modal-name-input::placeholder { color: var(--text-primary); font-weight: 400; opacity: 0.6; }
+  .modal-name-input { background: transparent; border: none; outline: none; font-size: 16px; font-weight: 500; color: var(--text-primary); font-family: 'Inter', sans-serif; letter-spacing: -0.2px; flex: 1; min-width: 0; }
+  .modal-name-input::placeholder { color: var(--text-primary); font-weight: 500; opacity: 0.5; }
   .modal-subtitle { font-size: 11px; color: var(--text-secondary); letter-spacing: 0.2px; text-transform: uppercase; font-weight: 500; }
   .modal-close { display: flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 6px; background: transparent; border: none; cursor: pointer; color: var(--text-secondary); transition: background 0.1s, color 0.1s; }
   .modal-close:hover { background: var(--bg-hover); color: var(--text-cell); }
@@ -2163,9 +2164,9 @@ export default function LeaseTracker() {
                     {/* Compose area */}
                     {!notesOpen && !(notes[selected]?.history?.length) ? (
                       <div className="notes-empty" onClick={openNotes}>
-                        <span className="notes-empty-icon">✎</span>
+                        <span className="notes-empty-icon"><Pencil size={15} strokeWidth={1.5} style={{ opacity: 0.3 }} /></span>
                         <span className="notes-empty-text">No notes yet</span>
-                        <span className="notes-empty-hint">Click to add your first note</span>
+                        <span className="notes-empty-hint">Click to add a note</span>
                       </div>
                     ) : (
                       <>
@@ -2178,8 +2179,15 @@ export default function LeaseTracker() {
                           onKeyDown={e => { if (e.metaKey && e.key === "Enter") saveNote(); }}
                         />
                         <div className="notes-footer">
-                          <span className="notes-saved-at" style={{ color: noteSaved ? (isDayMode ? "#16a34a" : "#2a8f4e") : undefined }}>
-                            {noteSaved ? "✓ Saved" : "⌘ + Enter to save"}
+                          <span className="notes-saved-at">
+                            {noteSaved
+              ? <span style={{ color: isDayMode ? "#16a34a" : "#2a8f4e" }}>✓ Saved</span>
+              : <span style={{ display:"flex", alignItems:"center", gap:4 }}>
+                  <kbd className="kbd">⌘</kbd>
+                  <kbd className="kbd">↵</kbd>
+                  <span>to save</span>
+                </span>
+            }
                           </span>
                           <button
                             className="notes-save-btn"
@@ -2254,6 +2262,7 @@ export default function LeaseTracker() {
                         </svg>
                       </div>
                       <div style={{ fontSize:13, fontWeight:500, color:"var(--text-primary)", letterSpacing:"-0.1px" }}>Enter manually</div>
+                      <div style={{ fontSize:11, color:"var(--text-secondary)" }}>Fill in each field yourself</div>
                     </button>
                     <button className="import-pick-card" onClick={() => setModalTab("import")}>
                       <div className="import-pick-icon">
@@ -2264,6 +2273,7 @@ export default function LeaseTracker() {
                         </svg>
                       </div>
                       <div style={{ fontSize:13, fontWeight:500, color:"var(--text-primary)", letterSpacing:"-0.1px" }}>Quick Import</div>
+                      <div style={{ fontSize:11, color:"var(--text-secondary)" }}>Paste from CRM to auto-fill</div>
                     </button>
                   </div>
                 </>

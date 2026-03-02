@@ -961,6 +961,18 @@ const css = `
   }
   .app.day .tl-now-badge { background: rgba(79,70,229,0.1); color: #4f46e5; }
 
+  /* Pagination arrows */
+  .tl-nav-btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--border-input);
+    background: var(--bg-panel); color: var(--text-secondary);
+    cursor: pointer; transition: background 0.1s, color 0.1s, border-color 0.1s;
+    flex-shrink: 0;
+  }
+  .tl-nav-btn:hover:not(:disabled) { background: var(--bg-hover); color: var(--text-primary); border-color: var(--border-status); }
+  .tl-nav-btn:disabled { opacity: 0.25; cursor: default; }
+  .tl-page-info { font-size: 11px; color: var(--text-secondary); white-space: nowrap; font-weight: 500; }
+
   /* Content row — one cell per month, fills remaining height */
   .tl-body-row {
     display: contents;
@@ -1129,41 +1141,51 @@ function ToastContainer({ toasts, isDayMode }) {
 // ── TIMELINE VIEW — CSS Grid Gantt ──────────────────────────────────────────
 
 const TIMELINE_MONTHS = 12;
+const COL_WIDTH = 220; // fixed px per column — same on every screen size
 
 function TimelineView({ customers, isDayMode, openPanel, openModal }) {
   const now = useRef(new Date()).current;
   const [tlSearch, setTlSearch] = useState('');
   const containerRef = useRef(null);
-  const [gridWidth, setGridWidth] = useState(0);
+  const [containerWidth, setContainerWidth] = useState(0);
+  const [page, setPage] = useState(0); // which window of columns we're viewing
 
-  // Measure container so we can set grid-template-columns dynamically
+  // Measure container width
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    const measure = () => setGridWidth(el.getBoundingClientRect().width);
+    const measure = () => setContainerWidth(el.getBoundingClientRect().width);
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
 
-  // colWidth: spread 12 columns evenly, scrollbar ~8px, min 130px
-  const colWidth = gridWidth > 0 ? Math.max(130, Math.floor((gridWidth - 8) / TIMELINE_MONTHS)) : 0;
+  // How many columns fit at fixed width (subtract scrollbar ~8px)
+  const visibleCols = containerWidth > 0 ? Math.max(1, Math.floor((containerWidth - 8) / COL_WIDTH)) : TIMELINE_MONTHS;
+  const needsPagination = visibleCols < TIMELINE_MONTHS;
+  const maxPage = Math.max(0, TIMELINE_MONTHS - visibleCols);
 
-  // 12 months starting from this month — recomputes automatically each month
+  // Clamp page when screen grows
+  const safePage = Math.min(page, maxPage);
+  useEffect(() => { if (page > maxPage) setPage(maxPage); }, [maxPage]);
+
+  // Visible slice of months
   const months = useMemo(() =>
     Array.from({ length: TIMELINE_MONTHS }, (_, i) =>
       new Date(now.getFullYear(), now.getMonth() + i, 1)
     ), []);
 
-  // Today line: % within current month column
+  const visibleMonths = months.slice(safePage, safePage + visibleCols);
+
+  // Today line: % within current month column (only shown if month 0 is visible)
   const todayPct = useMemo(() => {
     const ms = new Date(now.getFullYear(), now.getMonth(), 1);
     const me = new Date(now.getFullYear(), now.getMonth() + 1, 1);
     return ((now - ms) / (me - ms)) * 100;
   }, []);
 
-  // Bucket customers by lease-end month key
+  // Bucket all 12 months
   const buckets = useMemo(() => {
     const map = new Map();
     months.forEach(m => map.set(`${m.getFullYear()}-${m.getMonth()}`, []));
@@ -1185,99 +1207,115 @@ function TimelineView({ customers, isDayMode, openPanel, openModal }) {
 
   const total = useMemo(() => { let n = 0; buckets.forEach(a => n += a.length); return n; }, [buckets]);
 
-  const gridTemplateColumns = colWidth > 0 ? `repeat(${TIMELINE_MONTHS}, ${colWidth}px)` : `repeat(${TIMELINE_MONTHS}, 1fr)`;
+  // Label for the visible range e.g. "Mar – Jun 2026"
+  const rangeLabel = useMemo(() => {
+    if (!needsPagination) return null;
+    const first = visibleMonths[0];
+    const last  = visibleMonths[visibleMonths.length - 1];
+    const fLabel = `${MONTH_SHORT[first.getMonth()]}`;
+    const lLabel = `${MONTH_SHORT[last.getMonth()]} ${last.getFullYear()}`;
+    return first.getFullYear() === last.getFullYear() ? `${fLabel} – ${lLabel}` : `${fLabel} ${first.getFullYear()} – ${lLabel}`;
+  }, [visibleMonths, needsPagination]);
+
+  const gridTemplateColumns = `repeat(${visibleCols}, ${COL_WIDTH}px)`;
 
   return (
     <div className="timeline-panel">
       <div className="timeline-topbar">
         <span className="timeline-title">Timeline</span>
+        {needsPagination && (
+          <>
+            <button className="tl-nav-btn" disabled={safePage === 0} onClick={() => setPage(p => Math.max(0, p - 1))}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <span className="tl-page-info">{rangeLabel}</span>
+            <button className="tl-nav-btn" disabled={safePage >= maxPage} onClick={() => setPage(p => Math.min(maxPage, p + 1))}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          </>
+        )}
         <div className="spacer" />
         <input className="search-box" placeholder="Search..." value={tlSearch} onChange={e => setTlSearch(e.target.value)} />
         <button className="btn-primary" onClick={openModal}><UserPlus size={13} strokeWidth={2} />New Customer</button>
       </div>
 
-      {total === 0 && !colWidth ? null : (
-        <div className="tl-scroll" ref={containerRef}>
-          {colWidth > 0 && (
-            <div className="tl-grid" style={{ gridTemplateColumns }}>
+      <div className="tl-scroll" ref={containerRef}>
+        {containerWidth > 0 && (
+          <div className="tl-grid" style={{ gridTemplateColumns }}>
 
-              {/* ── Header row: one cell per month ── */}
-              {months.map((m, i) => (
-                <div key={`h${i}`} className="tl-header-cell">
-                  <span className={`tl-month-label${i === 0 ? ' is-current' : ''}`}>
+            {/* Header row */}
+            {visibleMonths.map((m, vi) => {
+              const absIdx = safePage + vi;
+              const isCurrent = absIdx === 0;
+              return (
+                <div key={`h${vi}`} className="tl-header-cell">
+                  <span className={`tl-month-label${isCurrent ? ' is-current' : ''}`}>
                     {MONTH_SHORT[m.getMonth()]} {m.getFullYear()}
                   </span>
-                  {i === 0 && <span className="tl-now-badge">Now</span>}
+                  {isCurrent && <span className="tl-now-badge">Now</span>}
                 </div>
-              ))}
+              );
+            })}
 
-              {/* ── Body row: one column cell per month ── */}
-              {months.map((m, i) => {
-                const key   = `${m.getFullYear()}-${m.getMonth()}`;
-                const cards = buckets.get(key) || [];
-                const isCurrent = i === 0;
+            {/* Body columns */}
+            {visibleMonths.map((m, vi) => {
+              const absIdx = safePage + vi;
+              const isCurrent = absIdx === 0;
+              const key   = `${m.getFullYear()}-${m.getMonth()}`;
+              const cards = buckets.get(key) || [];
 
-                return (
-                  <div key={`b${i}`} className={`tl-col${isCurrent ? ' is-current' : ''}`}>
-                    {/* Today line only in current month column */}
-                    {isCurrent && (
-                      <div className="tl-today-line" style={{ left: `${todayPct}%` }} />
-                    )}
+              return (
+                <div key={`b${vi}`} className={`tl-col${isCurrent ? ' is-current' : ''}`}>
+                  {isCurrent && <div className="tl-today-line" style={{ left: `${todayPct}%` }} />}
+                  {cards.map(c => {
+                    const ml  = calcMonthsLeft(c.leaseEnd);
+                    const dl  = calcDaysLeft(c.leaseEnd);
+                    const urgent = ml === 0;
+                    const timeColor = ml === 0
+                      ? (isDayMode ? '#4f46e5' : '#7aa4e0')
+                      : ml <= 3
+                      ? (isDayMode ? '#2563eb' : '#5a84c0')
+                      : 'var(--text-secondary)';
+                    const timeStr = ml === 0 ? (dl <= 0 ? 'Today' : `${dl}d left`) : `${ml} mo`;
+                    const sm = statusMeta(c.status);
+                    const vehicle = [c.year, c.model, c.trim && c.trim !== '—' ? c.trim : null].filter(Boolean).join(' ');
+                    const hasIncentive = c.privateIncentive > 0;
+                    const mp = calcMileagePace(c);
+                    const hasMiles = mp && (mp.status === 'over' || mp.status === 'warning');
 
-                    {total === 0 && i === 0 ? (
-                      <div className="timeline-empty-state" style={{ gridColumn: `1 / ${TIMELINE_MONTHS + 1}`, position: 'relative', zIndex: 1 }}>
-                        <span className="timeline-empty-state-title">{tlSearch ? 'No matches' : 'No upcoming lease ends'}</span>
-                        <span className="timeline-empty-state-sub">{tlSearch ? 'Try a different search' : 'Add customers to see them here'}</span>
-                      </div>
-                    ) : cards.map(c => {
-                      const ml  = calcMonthsLeft(c.leaseEnd);
-                      const dl  = calcDaysLeft(c.leaseEnd);
-                      const urgent = ml === 0;
-                      const timeColor = ml === 0
-                        ? (isDayMode ? '#4f46e5' : '#7aa4e0')
-                        : ml <= 3
-                        ? (isDayMode ? '#2563eb' : '#5a84c0')
-                        : 'var(--text-secondary)';
-                      const timeStr = ml === 0 ? (dl <= 0 ? 'Today' : `${dl}d left`) : `${ml} mo`;
-                      const sm = statusMeta(c.status);
-                      const vehicle = [c.year, c.model, c.trim && c.trim !== '—' ? c.trim : null].filter(Boolean).join(' ');
-                      const hasIncentive = c.privateIncentive > 0;
-                      const mp = calcMileagePace(c);
-                      const hasMiles = mp && (mp.status === 'over' || mp.status === 'warning');
-
-                      return (
-                        <div key={c.id} className={`tl-card${urgent ? ' urgent' : ''}`} onClick={() => openPanel(c.id)}>
-                          <span className="tl-card-name">{c.name}</span>
-                          {vehicle && <span className="tl-card-vehicle">{vehicle}</span>}
-                          <div className="tl-card-footer">
-                            <span className="tl-card-time" style={{ color: timeColor }}>{timeStr}</span>
-                            <span className="tl-card-status" style={{ background: sm.color + '22', color: sm.color, borderColor: sm.color + '44' }}>{sm.label}</span>
-                          </div>
-                          {(hasIncentive || hasMiles) && (
-                            <div className="tl-card-badges">
-                              {hasIncentive && <span className="tl-badge-incentive">${Number(c.privateIncentive).toLocaleString()} · {c.incentiveExp && c.incentiveExp !== '—' ? c.incentiveExp : 'incentive'}</span>}
-                              {hasMiles && <span className="tl-badge-miles">{mp.status === 'over' ? `+${Math.abs(mp.overage).toLocaleString()} mi over` : 'miles at risk'}</span>}
-                            </div>
-                          )}
+                    return (
+                      <div key={c.id} className={`tl-card${urgent ? ' urgent' : ''}`} onClick={() => openPanel(c.id)}>
+                        <span className="tl-card-name">{c.name}</span>
+                        {vehicle && <span className="tl-card-vehicle">{vehicle}</span>}
+                        <div className="tl-card-footer">
+                          <span className="tl-card-time" style={{ color: timeColor }}>{timeStr}</span>
+                          <span className="tl-card-status" style={{ background: sm.color + '22', color: sm.color, borderColor: sm.color + '44' }}>{sm.label}</span>
                         </div>
-                      );
-                    })}
-                  </div>
-                );
-              })}
+                        {(hasIncentive || hasMiles) && (
+                          <div className="tl-card-badges">
+                            {hasIncentive && <span className="tl-badge-incentive">${Number(c.privateIncentive).toLocaleString()} · {c.incentiveExp && c.incentiveExp !== '—' ? c.incentiveExp : 'incentive'}</span>}
+                            {hasMiles && <span className="tl-badge-miles">{mp.status === 'over' ? `+${Math.abs(mp.overage).toLocaleString()} mi over` : 'miles at risk'}</span>}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {total === 0 && vi === 0 && (
+                    <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: 0.5, zIndex: 1 }}>
+                      <span className="timeline-empty-state-title">{tlSearch ? 'No matches' : 'No upcoming lease ends'}</span>
+                      <span className="timeline-empty-state-sub">{tlSearch ? 'Try a different search' : 'Add customers to see them here'}</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
 
-            </div>
-          )}
-        </div>
-      )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
-
-
-
-
-
 
 
 export default function LeaseTracker() {

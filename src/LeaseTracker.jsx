@@ -1772,38 +1772,38 @@ export default function LeaseTracker() {
   // Must be defined before openPanel which depends on it
   const customersById = useMemo(() => new Map(customers.map(c => [c.id, c])), [customers]);
 
-    const openPanel = useCallback((id, enterEdit = false) => {
-    const c = customersById.get(id);
-    if (!c) return;
-    clearTimeout(closeTimer.current);
-    setSelected(id);
-    setSnapCustomer(c);
-    setNoteDraft("");
-    setNotesOpen(false);
-    setEditSaved(false);
-    if (enterEdit) {
-      setEditForm({
-        name:             c.name,
-        year:             String(c.year),
-        model:            c.model === "—" ? "" : c.model,
-        trim:             (!c.trim  || c.trim  === "—") ? "" : c.trim,
-        bank:             (!c.bank  || c.bank  === "—") ? "" : c.bank,
-        term:             c.term  ? String(c.term)  : "",
-        milesYearly:      c.milesYearly  ? Number(c.milesYearly).toLocaleString() : "",
-        milesTerm:        c.milesTerm    ? Number(c.milesTerm).toLocaleString() : "",
-        currentMiles:     String(c.currentMiles),
-        monthlyPayment:   c.monthlyPayment ? String(c.monthlyPayment) : "",
-        downPayment:      c.downPayment   ? String(c.downPayment)   : "",
-        tradeEquity:      c.tradeEquity   ? String(c.tradeEquity)   : "",
-        leaseEnd:         c.leaseEnd === "—" ? "" : c.leaseEnd,
-        privateIncentive: c.privateIncentive > 0 ? String(c.privateIncentive) : "",
-        incentiveExp:     c.incentiveExp === "—" ? "" : c.incentiveExp,
-      });
-      setEditMode(true);
-    } else {
-      setEditMode(false);
-    }
-    setPanelState("open");
+  const openPanel = useCallback((id, enterEdit = false) => {
+  const c = customersById.get(id);
+  if (!c) return;
+  clearTimeout(closeTimer.current);
+  setSelected(id);
+  setSnapCustomer(c);
+  setNoteDraft("");
+  setNotesOpen(false);
+  setEditSaved(false);
+  if (enterEdit) {
+    setEditForm({
+      name:             c.name,
+      year:             String(c.year),
+      model:            c.model === "—" ? "" : c.model,
+      trim:             (!c.trim  || c.trim  === "—") ? "" : c.trim,
+      bank:             (!c.bank  || c.bank  === "—") ? "" : c.bank,
+      term:             c.term  ? String(c.term)  : "",
+      milesYearly:      c.milesYearly  ? Number(c.milesYearly).toLocaleString() : "",
+      milesTerm:        c.milesTerm    ? Number(c.milesTerm).toLocaleString() : "",
+      currentMiles:     String(c.currentMiles),
+      monthlyPayment:   c.monthlyPayment ? String(c.monthlyPayment) : "",
+      downPayment:      c.downPayment   ? String(c.downPayment)   : "",
+      tradeEquity:      c.tradeEquity   ? String(c.tradeEquity)   : "",
+      leaseEnd:         c.leaseEnd === "—" ? "" : c.leaseEnd,
+      privateIncentive: c.privateIncentive > 0 ? String(c.privateIncentive) : "",
+      incentiveExp:     c.incentiveExp === "—" ? "" : c.incentiveExp,
+    });
+    setEditMode(true);
+  } else {
+    setEditMode(false);
+  }
+  setPanelState("open");
   }, [customers, customersById]);
 
   // Returns true if editForm differs from the saved customer data
@@ -1962,8 +1962,8 @@ export default function LeaseTracker() {
 
   // ── Add modal ──
 
-  const openModal  = useCallback(() => { setForm(EMPTY_FORM); setShowModal(true); setModalTab("pick"); setImportText(""); setImportError(""); }, []);
   const closeModal = useCallback(() => { setShowModal(false); setForm(EMPTY_FORM); setModalTab("pick"); setImportText(""); setImportError(""); }, []);
+  const openModal  = useCallback(() => { setForm(EMPTY_FORM); setShowModal(true); setModalTab("pick"); setImportText(""); setImportError(""); }, []);
 
   const isDuplicate = useMemo(() => {
     if (!showModal || !form.name.trim()) return false;
@@ -2022,7 +2022,6 @@ export default function LeaseTracker() {
 
   // ── Delete ──
 
-  const confirmDelete = (id, e) => { e.stopPropagation(); setConfirmDel(id); };
   const executeDelete = async () => {
     const delName = customersById.get(confirmDel)?.name || "Customer";
     const { error } = await supabase.from("customers").delete().eq("id", confirmDel);
@@ -2032,6 +2031,7 @@ export default function LeaseTracker() {
     setConfirmDel(null);
     addToast(delName, "info", "Deleted");
   };
+  const confirmDelete = (id, e) => { e.stopPropagation(); setConfirmDel(id); };
 
   // ── Sort ──
 

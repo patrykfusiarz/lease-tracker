@@ -1024,6 +1024,16 @@ const css = `
   .tl-badge-miles  { font-size: 10.5px; font-weight: 500; padding: 2px 7px; border-radius: 4px; background: rgba(239,68,68,0.1); color: #dc2626; border: 1px solid rgba(239,68,68,0.2); }
   .app:not(.day) .tl-badge-miles { background: rgba(248,113,113,0.1); color: #f87171; border-color: rgba(248,113,113,0.2); }
 
+  /* Slide animations for pagination */
+  @keyframes tl-out-left  { from { opacity:1; transform: translateX(0);      } to { opacity:0; transform: translateX(-40px); } }
+  @keyframes tl-out-right { from { opacity:1; transform: translateX(0);      } to { opacity:0; transform: translateX(40px);  } }
+  @keyframes tl-in-left   { from { opacity:0; transform: translateX(40px);  } to { opacity:1; transform: translateX(0);      } }
+  @keyframes tl-in-right  { from { opacity:0; transform: translateX(-40px); } to { opacity:1; transform: translateX(0);      } }
+
+  .tl-grid { transition: none; }
+  .tl-slide-left  { animation: tl-out-left  0.26s cubic-bezier(0.4,0,1,1) forwards; }
+  .tl-slide-right { animation: tl-out-right 0.26s cubic-bezier(0.4,0,1,1) forwards; }
+
   .tl-panel-overlay {
     position: absolute; top: 0; right: 0; bottom: 0; width: 55%; z-index: 20;
     animation: panelIn 0.22s cubic-bezier(0.16,1,0.3,1) forwards;
@@ -1141,16 +1151,17 @@ function ToastContainer({ toasts, isDayMode }) {
 // ── TIMELINE VIEW — CSS Grid Gantt ──────────────────────────────────────────
 
 const TIMELINE_MONTHS = 12;
-const COL_WIDTH = 220; // fixed px per column — same on every screen size
+const MIN_COL = 160;   // never narrower than this
+const IDEAL_COL = 220; // target column width
 
 function TimelineView({ customers, isDayMode, openPanel, openModal }) {
   const now = useRef(new Date()).current;
   const [tlSearch, setTlSearch] = useState('');
   const containerRef = useRef(null);
   const [containerWidth, setContainerWidth] = useState(0);
-  const [page, setPage] = useState(0); // which window of columns we're viewing
+  const [page, setPage] = useState(0);
+  const [sliding, setSliding] = useState(null); // 'left' | 'right' | null
 
-  // Measure container width
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -1161,16 +1172,23 @@ function TimelineView({ customers, isDayMode, openPanel, openModal }) {
     return () => ro.disconnect();
   }, []);
 
-  // How many columns fit at fixed width (subtract scrollbar ~8px)
-  const visibleCols = containerWidth > 0 ? Math.max(1, Math.floor((containerWidth - 8) / COL_WIDTH)) : TIMELINE_MONTHS;
+  // How many columns fit? Fit as many IDEAL_COL columns as possible,
+  // but never fewer than MIN_COL each. Cap at 12.
+  const visibleCols = useMemo(() => {
+    if (!containerWidth) return TIMELINE_MONTHS;
+    const fit = Math.floor(containerWidth / IDEAL_COL);
+    return Math.min(TIMELINE_MONTHS, Math.max(1, fit));
+  }, [containerWidth]);
+
+  // Actual column width: divide container evenly among visible cols
+  const colWidth = containerWidth > 0 ? Math.floor(containerWidth / visibleCols) : IDEAL_COL;
+
   const needsPagination = visibleCols < TIMELINE_MONTHS;
   const maxPage = Math.max(0, TIMELINE_MONTHS - visibleCols);
-
-  // Clamp page when screen grows
   const safePage = Math.min(page, maxPage);
+
   useEffect(() => { if (page > maxPage) setPage(maxPage); }, [maxPage]);
 
-  // Visible slice of months
   const months = useMemo(() =>
     Array.from({ length: TIMELINE_MONTHS }, (_, i) =>
       new Date(now.getFullYear(), now.getMonth() + i, 1)
@@ -1178,14 +1196,12 @@ function TimelineView({ customers, isDayMode, openPanel, openModal }) {
 
   const visibleMonths = months.slice(safePage, safePage + visibleCols);
 
-  // Today line: % within current month column (only shown if month 0 is visible)
   const todayPct = useMemo(() => {
     const ms = new Date(now.getFullYear(), now.getMonth(), 1);
     const me = new Date(now.getFullYear(), now.getMonth() + 1, 1);
     return ((now - ms) / (me - ms)) * 100;
   }, []);
 
-  // Bucket all 12 months
   const buckets = useMemo(() => {
     const map = new Map();
     months.forEach(m => map.set(`${m.getFullYear()}-${m.getMonth()}`, []));
@@ -1207,17 +1223,29 @@ function TimelineView({ customers, isDayMode, openPanel, openModal }) {
 
   const total = useMemo(() => { let n = 0; buckets.forEach(a => n += a.length); return n; }, [buckets]);
 
-  // Label for the visible range e.g. "Mar – Jun 2026"
   const rangeLabel = useMemo(() => {
-    if (!needsPagination) return null;
+    if (!needsPagination || !visibleMonths.length) return null;
     const first = visibleMonths[0];
     const last  = visibleMonths[visibleMonths.length - 1];
-    const fLabel = `${MONTH_SHORT[first.getMonth()]}`;
-    const lLabel = `${MONTH_SHORT[last.getMonth()]} ${last.getFullYear()}`;
-    return first.getFullYear() === last.getFullYear() ? `${fLabel} – ${lLabel}` : `${fLabel} ${first.getFullYear()} – ${lLabel}`;
+    const sameYear = first.getFullYear() === last.getFullYear();
+    return sameYear
+      ? `${MONTH_SHORT[first.getMonth()]} – ${MONTH_SHORT[last.getMonth()]} ${last.getFullYear()}`
+      : `${MONTH_SHORT[first.getMonth()]} ${first.getFullYear()} – ${MONTH_SHORT[last.getMonth()]} ${last.getFullYear()}`;
   }, [visibleMonths, needsPagination]);
 
-  const gridTemplateColumns = `repeat(${visibleCols}, ${COL_WIDTH}px)`;
+  const navigate = (dir) => {
+    const next = dir === 'fwd'
+      ? Math.min(maxPage, safePage + 1)
+      : Math.max(0, safePage - 1);
+    if (next === safePage) return;
+    setSliding(dir === 'fwd' ? 'left' : 'right');
+    setTimeout(() => {
+      setPage(next);
+      setSliding(null);
+    }, 260);
+  };
+
+  const gridTemplateColumns = `repeat(${visibleCols}, ${colWidth}px)`;
 
   return (
     <div className="timeline-panel">
@@ -1225,11 +1253,11 @@ function TimelineView({ customers, isDayMode, openPanel, openModal }) {
         <span className="timeline-title">Timeline</span>
         {needsPagination && (
           <>
-            <button className="tl-nav-btn" disabled={safePage === 0} onClick={() => setPage(p => Math.max(0, p - 1))}>
+            <button className="tl-nav-btn" disabled={safePage === 0 || sliding !== null} onClick={() => navigate('back')}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
             </button>
             <span className="tl-page-info">{rangeLabel}</span>
-            <button className="tl-nav-btn" disabled={safePage >= maxPage} onClick={() => setPage(p => Math.min(maxPage, p + 1))}>
+            <button className="tl-nav-btn" disabled={safePage >= maxPage || sliding !== null} onClick={() => navigate('fwd')}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
             </button>
           </>
@@ -1241,9 +1269,11 @@ function TimelineView({ customers, isDayMode, openPanel, openModal }) {
 
       <div className="tl-scroll" ref={containerRef}>
         {containerWidth > 0 && (
-          <div className="tl-grid" style={{ gridTemplateColumns }}>
-
-            {/* Header row */}
+          <div
+            className={`tl-grid${sliding ? ` tl-slide-${sliding}` : ''}`}
+            style={{ gridTemplateColumns }}
+          >
+            {/* Header */}
             {visibleMonths.map((m, vi) => {
               const absIdx = safePage + vi;
               const isCurrent = absIdx === 0;
@@ -1267,6 +1297,12 @@ function TimelineView({ customers, isDayMode, openPanel, openModal }) {
               return (
                 <div key={`b${vi}`} className={`tl-col${isCurrent ? ' is-current' : ''}`}>
                   {isCurrent && <div className="tl-today-line" style={{ left: `${todayPct}%` }} />}
+                  {total === 0 && vi === 0 && (
+                    <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: 0.5, zIndex: 1, pointerEvents: 'none' }}>
+                      <span className="timeline-empty-state-title">{tlSearch ? 'No matches' : 'No upcoming lease ends'}</span>
+                      <span className="timeline-empty-state-sub">{tlSearch ? 'Try a different search' : 'Add customers to see them here'}</span>
+                    </div>
+                  )}
                   {cards.map(c => {
                     const ml  = calcMonthsLeft(c.leaseEnd);
                     const dl  = calcDaysLeft(c.leaseEnd);
@@ -1282,7 +1318,6 @@ function TimelineView({ customers, isDayMode, openPanel, openModal }) {
                     const hasIncentive = c.privateIncentive > 0;
                     const mp = calcMileagePace(c);
                     const hasMiles = mp && (mp.status === 'over' || mp.status === 'warning');
-
                     return (
                       <div key={c.id} className={`tl-card${urgent ? ' urgent' : ''}`} onClick={() => openPanel(c.id)}>
                         <span className="tl-card-name">{c.name}</span>
@@ -1300,16 +1335,9 @@ function TimelineView({ customers, isDayMode, openPanel, openModal }) {
                       </div>
                     );
                   })}
-                  {total === 0 && vi === 0 && (
-                    <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: 0.5, zIndex: 1 }}>
-                      <span className="timeline-empty-state-title">{tlSearch ? 'No matches' : 'No upcoming lease ends'}</span>
-                      <span className="timeline-empty-state-sub">{tlSearch ? 'Try a different search' : 'Add customers to see them here'}</span>
-                    </div>
-                  )}
                 </div>
               );
             })}
-
           </div>
         )}
       </div>

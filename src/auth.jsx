@@ -3,8 +3,13 @@ import { supabase } from "./supabase";
 
 const AuthContext = createContext(null);
 
-const INACTIVITY_TIMEOUT = 20 * 60 * 1000; // 20 minutes
-const REMEMBER_KEY       = "lt_remember_me";
+const INACTIVITY_TIMEOUT_DEFAULT  = 20 * 60 * 1000; // 20 min  — standard session
+const INACTIVITY_TIMEOUT_EXTENDED = 8 * 60 * 60 * 1000; // 8 hrs  — "remember me" session
+const REMEMBER_KEY = "lt_remember_me";
+function getInactivityTimeout() {
+  try { return localStorage.getItem(REMEMBER_KEY) === "1" ? INACTIVITY_TIMEOUT_EXTENDED : INACTIVITY_TIMEOUT_DEFAULT; }
+  catch { return INACTIVITY_TIMEOUT_DEFAULT; }
+}
 
 function buildUser(supabaseUser) {
   if (!supabaseUser) return null;
@@ -33,7 +38,7 @@ export function AuthProvider({ children }) {
       await supabase.auth.signOut();
       setUser(null);
       setTimedOut(true);
-    }, INACTIVITY_TIMEOUT);
+    }, getInactivityTimeout());
   }, [clearTimer]);
 
   useEffect(() => {
@@ -66,6 +71,7 @@ export function AuthProvider({ children }) {
   // ── Auth methods ──────────────────────────────────────────────────────────
   const signIn = async (email, password, rememberMe = false) => {
     setTimedOut(false);
+    // Store rememberMe preference — used to set inactivity timeout length
     localStorage.setItem(REMEMBER_KEY, rememberMe ? "1" : "0");
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
@@ -76,15 +82,6 @@ export function AuthProvider({ children }) {
     return { session: data.session };
   };
 
-  const signUp = async (email, password, name) => {
-    const { data, error } = await supabase.auth.signUp({
-      email, password,
-      options: { data: { name } },
-    });
-    if (error) return { error: error.message };
-    return { session: data.session };
-  };
-
   const signOut = async () => {
     clearTimer();
     setTimedOut(false);
@@ -92,7 +89,7 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
-  const updateProfile = async (_userId, { name, email, password, currentPassword }) => {
+  const updateProfile = async ({ name, email, password, currentPassword }) => {
     if (password && currentPassword) {
       const { error: reAuthError } = await supabase.auth.signInWithPassword({
         email: user.email,
@@ -172,7 +169,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, timedOut, signIn, signUp, signOut, updateProfile, updateAvatar, removeAvatar, resetPassword }}>
+    <AuthContext.Provider value={{ user, loading, timedOut, signIn, signOut, updateProfile, updateAvatar, removeAvatar, resetPassword }}>
       {children}
     </AuthContext.Provider>
   );

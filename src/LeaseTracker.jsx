@@ -1208,8 +1208,7 @@ function exportCSV(rows) {
       c.hasAccident ? "Yes" : "",
     ].map(esc).join(","));
   });
-  const blob = new Blob([lines.join("
-")], { type: "text/csv;charset=utf-8;" });
+  const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement("a");
   a.href     = url;
@@ -2917,7 +2916,7 @@ export default function LeaseTracker() {
             <div className="confirm-box" onClick={e => e.stopPropagation()}>
               <div className="confirm-title">Discard unsaved changes?</div>
               <div className="confirm-sub">Your edits haven't been saved.</div>
-              <div className="confirm-actions">
+n              <div className="confirm-actions">
                 <button className="btn-secondary" onClick={() => setConfirmDiscard(null)}>Keep Editing</button>
                 <button className="btn-danger" onClick={() => { setConfirmDiscard(null); setEditMode(false); confirmDiscard.action(); }}>Discard</button>
               </div>
@@ -2932,7 +2931,7 @@ export default function LeaseTracker() {
               <div className="confirm-box" onClick={e => e.stopPropagation()}>
                 <div className="confirm-title">Delete {del?.name}?</div>
                 <div className="confirm-sub">This will permanently remove {del?.name} and all their notes. This can't be undone.</div>
-                <div className="confirm-actions">
+n                <div className="confirm-actions">
                   <button className="btn-secondary" onClick={() => setConfirmDel(null)}>Cancel</button>
                   <button className="btn-danger" onClick={executeDelete}>Delete</button>
                 </div>

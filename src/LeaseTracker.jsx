@@ -1185,8 +1185,7 @@ function exportCSV(rows) {
     "Miles/Year","Miles/Term","Odometer","Accident"];
   const esc = (v) => {
     const s = v === null || v === undefined ? "" : String(v);
-    return s.includes(",") || s.includes('"') || s.includes("
-") ? `"${s.replace(/"/g,'""')}"` : s;
+    return s.includes(",") || s.includes('"') || s.includes("\n") ? `"${s.replace(/"/g,'""')}"` : s;
   };
   const lines = [headers.join(",")];
   rows.forEach(c => {

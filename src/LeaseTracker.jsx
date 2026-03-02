@@ -2,7 +2,7 @@ import { useReducer, useMemo, useState, useEffect, useRef, useCallback } from "r
 import { useAuth } from "./auth";
 import { SettingsModal } from "./SettingsModal";
 import { supabase } from "./supabase";
-import { Layers, LogOut, UserPlus, X, ChevronsUpDown, ChevronUp, ChevronDown, Pencil, Check, Trash2, Sun, Moon, ChevronLeft, ChevronRight, AlignJustify, Settings, CalendarRange } from "lucide-react";
+import { Layers, LogOut, UserPlus, X, ChevronsUpDown, ChevronUp, ChevronDown, Pencil, Check, Trash2, Sun, Moon, ChevronLeft, ChevronRight, AlignJustify, Settings, CalendarRange, Printer } from "lucide-react";
 
 // ── CONSTANTS ─────────────────────────────────────────────────────────────────
 
@@ -1145,6 +1145,137 @@ function ToastContainer({ toasts, isDayMode }) {
 
 
 
+// ── Print Customer Card ───────────────────────────────────────────────────────
+function printCustomer(c, notes) {
+  const fmt$ = (n) => n > 0 ? `$${Number(n).toLocaleString()}` : '—';
+  const fmtMi = (n) => n > 0 ? Number(n).toLocaleString() + ' mi' : '—';
+  const sm = statusMeta(c.status);
+  const ml = calcMonthsLeft(c.leaseEnd);
+  const dl = calcDaysLeft(c.leaseEnd);
+  const timeLeft = ml === 0 ? (dl <= 0 ? 'Expired' : `${dl} days left`) : `${ml} months left`;
+  const mp = calcMileagePace(c);
+  const milesPace = mp
+    ? mp.status === 'ok'
+      ? `On pace (proj. ${mp.projectedTotal.toLocaleString()} mi)`
+      : mp.status === 'over'
+      ? `Over by ~${Math.abs(mp.overage).toLocaleString()} mi`
+      : `On pace to exceed by ~${mp.overage.toLocaleString()} mi`
+    : '—';
+
+  const noteHistory = notes?.[c.id]?.history || [];
+
+  const FULL_MONTHS = { Jan:'January', Feb:'February', Mar:'March', Apr:'April', May:'May', Jun:'June', Jul:'July', Aug:'August', Sep:'September', Oct:'October', Nov:'November', Dec:'December' };
+  const fmtMonth = (str) => str && str !== '—' ? str.replace(/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/i, m => FULL_MONTHS[m] || m) : '—';
+
+  const rows = [
+    ['Year',             c.year || '—'],
+    ['Model',            c.model || '—'],
+    ['Trim',             (c.trim && c.trim !== '—') ? c.trim : '—'],
+    ['Bank',             c.bank || '—'],
+    ['Term',             c.term ? `${c.term} months` : '—'],
+    ['Lease End',        c.leaseEnd || '—'],
+    ['Time Remaining',   timeLeft],
+    ['Monthly Payment',  fmt$(c.monthlyPayment)],
+    ['Down Payment',     fmt$(c.downPayment)],
+    ['Trade Equity',     c.tradeEquity > 0 ? fmt$(c.tradeEquity) : '$0'],
+    ['Incentive Value',  fmt$(c.privateIncentive)],
+    ['Incentive Expires',fmtMonth(c.incentiveExp)],
+    ['Miles / Year',     fmtMi(c.milesYearly)],
+    ['Miles / Term',     fmtMi(c.milesTerm)],
+    ['Odometer',         c.currentMiles > 0 ? Number(c.currentMiles).toLocaleString() + ' mi' : '—'],
+    ['Mileage Pace',     milesPace],
+    ...(c.hasAccident ? [['Accident Reported', 'Yes']] : []),
+  ];
+
+  const rowsHtml = rows.map(([label, val]) => `
+    <tr>
+      <td class="label">${label}</td>
+      <td class="val">${val}</td>
+    </tr>`).join('');
+
+  const notesHtml = noteHistory.length > 0
+    ? noteHistory.map(n => `
+      <div class="note">
+        <div class="note-time">${n.savedAt}</div>
+        <div class="note-text">${n.text.replace(/\n/g, '<br>')}</div>
+      </div>`).join('')
+    : '<p class="no-notes">No notes recorded.</p>';
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>${c.name} — Lease Summary</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; background: #fff; color: #111827; font-size: 13px; padding: 40px; max-width: 680px; margin: 0 auto; }
+
+    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 28px; padding-bottom: 20px; border-bottom: 2px solid #111827; }
+    .name { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; color: #111827; }
+    .vehicle { font-size: 14px; color: #6b7280; margin-top: 4px; font-weight: 400; }
+    .status-badge { padding: 4px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase; border: 1.5px solid; }
+    .meta { font-size: 11px; color: #9ca3af; margin-top: 6px; text-align: right; }
+
+    .section-title { font-size: 9px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: #9ca3af; margin-bottom: 8px; margin-top: 24px; }
+    table { width: 100%; border-collapse: collapse; }
+    tr { border-bottom: 1px solid #f3f4f6; }
+    tr:last-child { border-bottom: none; }
+    td { padding: 8px 0; vertical-align: top; }
+    td.label { width: 48%; font-size: 12px; color: #6b7280; font-weight: 500; }
+    td.val { font-size: 12px; color: #111827; font-weight: 500; }
+
+    .divider { height: 1px; background: #e5e7eb; margin: 20px 0; }
+
+    .note { margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid #f3f4f6; }
+    .note:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+    .note-time { font-size: 10px; font-weight: 700; color: #9ca3af; letter-spacing: 0.4px; text-transform: uppercase; margin-bottom: 4px; }
+    .note-text { font-size: 12px; color: #374151; line-height: 1.6; }
+    .no-notes { font-size: 12px; color: #9ca3af; }
+
+    .footer { margin-top: 36px; padding-top: 16px; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; font-size: 10px; color: #9ca3af; }
+
+    @media print {
+      body { padding: 24px; }
+      @page { margin: 0.5in; size: letter; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <div class="name">${c.name}</div>
+      <div class="vehicle">${[c.year, c.model, (c.trim && c.trim !== '—') ? c.trim : null].filter(Boolean).join(' ') || '—'}</div>
+    </div>
+    <div style="text-align:right">
+      <div class="status-badge" style="color:${sm.color}; border-color:${sm.color}; background:${sm.color}18">${sm.label}</div>
+      <div class="meta">Meridian VW · ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</div>
+    </div>
+  </div>
+
+  <div class="section-title">Lease Details</div>
+  <table>${rowsHtml}</table>
+
+  <div class="divider"></div>
+  <div class="section-title">Notes</div>
+  ${notesHtml}
+
+  <div class="footer">
+    <span>Meridian Volkswagen Lease Tracker</span>
+    <span>Printed ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+  </div>
+
+  <script>window.onload = () => { window.print(); }<\/script>
+</body>
+</html>`;
+
+  const win = window.open('', '_blank', 'width=720,height=900');
+  if (!win) { alert('Please allow popups to print customer cards.'); return; }
+  win.document.write(html);
+  win.document.close();
+}
+
+
 // ── TIMELINE VIEW — CSS Grid Gantt ──────────────────────────────────────────
 
 const TIMELINE_MONTHS = 12;
@@ -2090,6 +2221,9 @@ export default function LeaseTracker() {
                     onClick={() => editMode ? saveEdit() : startEdit(c)}
                     disabled={editSaving}>
                     {editSaving ? "Saving…" : editSaved ? <><Check size={11} strokeWidth={2.5} /> Saved</> : editMode ? <><Check size={11} strokeWidth={2.5} /> Save</> : <><Pencil size={11} strokeWidth={2} /> Edit</>}
+                  </button>
+                  <button className="detail-edit-btn" title="Print / Export PDF" onClick={() => printCustomer(c, notes)} style={{ gap: 4 }}>
+                    <Printer size={11} strokeWidth={2} /> Print
                   </button>
                   <button className="detail-close" onClick={closePanel}><X size={14} strokeWidth={2} /></button>
                 </div>

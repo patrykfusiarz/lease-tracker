@@ -918,19 +918,19 @@ const css = `
   }
   .timeline-title { font-size: 16px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.3px; }
 
-  /* Scroll container — horizontal only */
+  /* Scroll container — vertical scroll only, full width */
   .tl-scroll {
-    flex: 1; overflow-x: auto; overflow-y: auto;
+    flex: 1; overflow-x: hidden; overflow-y: auto;
     display: flex; flex-direction: column;
-    position: relative;
+    position: relative; width: 100%;
   }
-  .tl-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
+  .tl-scroll::-webkit-scrollbar { width: 4px; }
   .tl-scroll::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 3px; }
 
-  /* The full-width canvas — grows as wide as needed */
+  /* Canvas — expands to fill measured width */
   .tl-canvas {
-    display: flex; flex-direction: column; min-height: 100%;
-    position: relative;
+    display: flex; flex-direction: column;
+    position: relative; flex-shrink: 0;
   }
 
   /* Month header row — sticky to top */
@@ -1007,19 +1007,20 @@ const css = `
   .tl-month-section-label.is-current .tl-section-count { background: rgba(74,143,212,0.15); color: var(--border-input-focus); }
   .app.day .tl-month-section-label.is-current .tl-section-count { background: rgba(79,70,229,0.1); color: #4f46e5; }
 
-  /* Cards row within a month section */
+  /* Cards row within a month section — starts at column offset, wraps right */
   .tl-month-cards-row {
     display: flex; flex-wrap: wrap; gap: 7px;
     padding: 4px 14px 14px;
+    box-sizing: border-box;
   }
 
-  /* Cards — kept but modernised */
+  /* Cards — fluid width, fit within column */
   .tl-card {
     background: var(--bg-card); border: 1px solid var(--border-card);
     border-radius: 8px; padding: 9px 12px; cursor: pointer;
     transition: border-color 0.12s, background 0.12s, box-shadow 0.12s;
     display: flex; flex-direction: column; gap: 5px;
-    width: 200px; flex-shrink: 0;
+    flex: 1; min-width: 120px; max-width: 220px;
   }
   .tl-card:hover {
     border-color: var(--border-input-focus);
@@ -1162,29 +1163,43 @@ function ToastContainer({ toasts, isDayMode }) {
 
 // ── TIMELINE VIEW — Linear-style Gantt ──────────────────────────────────────
 
-const MONTH_WIDTH = 220; // px per month column
+const TIMELINE_MONTHS = 12;
 
 function TimelineView({ customers, isDayMode, openPanel, openModal }) {
-  const now    = useRef(new Date()).current;
-  const MONTHS = 12;
+  const now = useRef(new Date()).current;
   const [tlSearch, setTlSearch] = useState("");
+  const containerRef = useRef(null);
+  const [colWidth, setColWidth] = useState(0);
 
-  // Build 12 months starting from current month
+  // Measure container width, divide evenly across 12 columns, min 140px
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const measure = () => {
+      const w = el.getBoundingClientRect().width;
+      setColWidth(Math.max(140, Math.floor(w / TIMELINE_MONTHS)));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // 12 months from current month, recalculated each render so it auto-updates
   const months = useMemo(() =>
-    Array.from({ length: MONTHS }, (_, i) =>
+    Array.from({ length: TIMELINE_MONTHS }, (_, i) =>
       new Date(now.getFullYear(), now.getMonth() + i, 1)
     ), []);
 
-  // Total canvas width
-  const totalWidth = MONTHS * MONTH_WIDTH;
+  const totalWidth = colWidth * TIMELINE_MONTHS;
 
-  // Today marker: px offset from left edge
+  // Today line: fractional position within current month column
   const todayOffset = useMemo(() => {
+    if (!colWidth) return 0;
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const monthEnd   = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-    const progress   = (now - monthStart) / (monthEnd - monthStart);
-    return 0 * MONTH_WIDTH + progress * MONTH_WIDTH; // month index 0 = current
-  }, []);
+    return ((now - monthStart) / (monthEnd - monthStart)) * colWidth;
+  }, [colWidth]);
 
   // Bucket customers by lease-end month
   const buckets = useMemo(() => {
@@ -1194,7 +1209,6 @@ function TimelineView({ customers, isDayMode, openPanel, openModal }) {
     customers.forEach(c => {
       const end = smartParseDate(c.leaseEnd);
       if (!end) return;
-      // only show months in our window
       const key = `${end.getFullYear()}-${end.getMonth()}`;
       if (!map.has(key)) return;
       if (q) {
@@ -1207,15 +1221,10 @@ function TimelineView({ customers, isDayMode, openPanel, openModal }) {
     return map;
   }, [customers, months, tlSearch]);
 
-  const activeMonths = useMemo(() =>
-    months.filter(m => (buckets.get(`${m.getFullYear()}-${m.getMonth()}`) || []).length > 0)
-  , [months, buckets]);
-
   const total = useMemo(() => { let n = 0; buckets.forEach(a => n += a.length); return n; }, [buckets]);
 
   return (
     <div className="timeline-panel">
-      {/* Topbar */}
       <div className="timeline-topbar">
         <span className="timeline-title">Timeline</span>
         <div className="spacer" />
@@ -1223,68 +1232,68 @@ function TimelineView({ customers, isDayMode, openPanel, openModal }) {
         <button className="btn-primary" onClick={openModal}><UserPlus size={13} strokeWidth={2} />New Customer</button>
       </div>
 
-      {total === 0 ? (
-        <div className="timeline-empty-state">
-          <span className="timeline-empty-state-title">{tlSearch ? "No matches found" : "No upcoming lease ends"}</span>
-          <span className="timeline-empty-state-sub">{tlSearch ? "Try a different search" : "Add customers with lease end dates to see them here"}</span>
-        </div>
-      ) : (
-        <div className="tl-scroll">
-          <div className="tl-canvas" style={{ minWidth: totalWidth }}>
-
-            {/* ── Sticky month header row ── */}
-            <div className="tl-header-row" style={{ minWidth: totalWidth }}>
-              {months.map((m, i) => {
-                const isCurrent = i === 0;
-                return (
-                  <div key={i} className="tl-header-month" style={{ width: MONTH_WIDTH }}>
-                    <div className={`tl-month-label${isCurrent ? ' is-current' : ''}`}>
-                      {MONTH_SHORT[m.getMonth()]} {m.getFullYear()}
-                      {isCurrent && <span className="tl-now-badge">Now</span>}
-                    </div>
+      <div className="tl-scroll" ref={containerRef}>
+        {colWidth > 0 && (
+          <>
+            {/* Sticky header — all 12 months always visible */}
+            <div className="tl-header-row" style={{ width: totalWidth }}>
+              {months.map((m, i) => (
+                <div key={i} className="tl-header-month" style={{ width: colWidth }}>
+                  <div className={`tl-month-label${i === 0 ? ' is-current' : ''}`}>
+                    {MONTH_SHORT[m.getMonth()]} {m.getFullYear()}
+                    {i === 0 && <span className="tl-now-badge">Now</span>}
                   </div>
-                );
-              })}
+                </div>
+              ))}
             </div>
 
-            {/* ── Content area with grid + cards ── */}
-            <div className="tl-content" style={{ minWidth: totalWidth }}>
+            {/* Canvas with grid + cards */}
+            <div className="tl-canvas" style={{ width: totalWidth }}>
 
-              {/* Vertical grid lines */}
-              <div className="tl-grid-lines" style={{ minWidth: totalWidth }}>
+              {/* Vertical column backgrounds */}
+              <div className="tl-grid-lines" style={{ width: totalWidth }}>
                 {months.map((_, i) => (
-                  <div key={i} className={`tl-grid-col${i === 0 ? ' is-current' : ''}`} style={{ width: MONTH_WIDTH }} />
+                  <div key={i} className={`tl-grid-col${i === 0 ? ' is-current' : ''}`} style={{ width: colWidth }} />
                 ))}
               </div>
 
-              {/* Today line */}
+              {/* Today marker line */}
               <div className="tl-today-line" style={{ left: todayOffset }} />
 
-              {/* Month sections with cards */}
-              {activeMonths.map((m, sectionIdx) => {
-                const key      = `${m.getFullYear()}-${m.getMonth()}`;
-                const cards    = buckets.get(key) || [];
-                const monthIdx = months.findIndex(mo => mo.getFullYear() === m.getFullYear() && mo.getMonth() === m.getMonth());
+              {total === 0 ? (
+                <div className="timeline-empty-state" style={{ position: 'relative', zIndex: 1 }}>
+                  <span className="timeline-empty-state-title">{tlSearch ? "No matches" : "No upcoming lease ends"}</span>
+                  <span className="timeline-empty-state-sub">{tlSearch ? "Try a different search" : "Add customers to see them here"}</span>
+                </div>
+              ) : months.map((m, monthIdx) => {
+                const key   = `${m.getFullYear()}-${m.getMonth()}`;
+                const cards = buckets.get(key) || [];
+                if (cards.length === 0) return null;
                 const isCurrent = monthIdx === 0;
 
                 return (
                   <div key={key} className="tl-month-section">
-                    {sectionIdx > 0 && <div className="tl-month-divider" />}
+                    <div className="tl-month-divider" />
                     <div className={`tl-month-section-label${isCurrent ? ' is-current' : ''}`}>
                       {MONTH_SHORT[m.getMonth()]} {m.getFullYear()}
                       <span className="tl-section-count">{cards.length}</span>
                     </div>
-                    <div className="tl-month-cards-row">
+                    {/* Cards indented to align under their month column */}
+                    <div className="tl-month-cards-row" style={{ paddingLeft: monthIdx * colWidth }}>
                       {cards.map(c => {
-                        const ml       = calcMonthsLeft(c.leaseEnd);
-                        const dl       = calcDaysLeft(c.leaseEnd);
-                        const urgent   = ml === 0;
-                        const timeColor = ml === 0 ? (isDayMode ? '#4f46e5' : '#7aa4e0') : ml <= 3 ? (isDayMode ? '#2563eb' : '#5a84c0') : 'var(--text-secondary)';
-                        const timeStr  = ml === 0 ? (dl <= 0 ? 'Today' : `${dl}d left`) : `${ml} mo`;
-                        const sm       = statusMeta(c.status);
-                        const vehicle  = [c.year, c.model, c.trim && c.trim !== '—' ? c.trim : null].filter(Boolean).join(' ');
+                        const ml  = calcMonthsLeft(c.leaseEnd);
+                        const dl  = calcDaysLeft(c.leaseEnd);
+                        const urgent = ml === 0;
+                        const timeColor = ml === 0
+                          ? (isDayMode ? '#4f46e5' : '#7aa4e0')
+                          : ml <= 3
+                          ? (isDayMode ? '#2563eb' : '#5a84c0')
+                          : 'var(--text-secondary)';
+                        const timeStr = ml === 0 ? (dl <= 0 ? 'Today' : `${dl}d left`) : `${ml} mo`;
+                        const sm  = statusMeta(c.status);
+                        const vehicle = [c.year, c.model, c.trim && c.trim !== '—' ? c.trim : null].filter(Boolean).join(' ');
                         const hasIncentive = c.privateIncentive > 0;
-                        const mp       = calcMileagePace(c);
+                        const mp  = calcMileagePace(c);
                         const hasMiles = mp && (mp.status === 'over' || mp.status === 'warning');
 
                         return (
@@ -1297,16 +1306,8 @@ function TimelineView({ customers, isDayMode, openPanel, openModal }) {
                             </div>
                             {(hasIncentive || hasMiles) && (
                               <div className="tl-card-badges">
-                                {hasIncentive && (
-                                  <span className="tl-badge-incentive">
-                                    ${Number(c.privateIncentive).toLocaleString()} · {c.incentiveExp && c.incentiveExp !== '—' ? c.incentiveExp : 'incentive'}
-                                  </span>
-                                )}
-                                {hasMiles && (
-                                  <span className="tl-badge-miles">
-                                    {mp.status === 'over' ? `+${Math.abs(mp.overage).toLocaleString()} mi over` : 'miles at risk'}
-                                  </span>
-                                )}
+                                {hasIncentive && <span className="tl-badge-incentive">${Number(c.privateIncentive).toLocaleString()} · {c.incentiveExp && c.incentiveExp !== '—' ? c.incentiveExp : 'incentive'}</span>}
+                                {hasMiles && <span className="tl-badge-miles">{mp.status === 'over' ? `+${Math.abs(mp.overage).toLocaleString()} mi over` : 'miles at risk'}</span>}
                               </div>
                             )}
                           </div>
@@ -1317,13 +1318,13 @@ function TimelineView({ customers, isDayMode, openPanel, openModal }) {
                 );
               })}
             </div>
-
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </div>
     </div>
   );
 }
+
 
 
 

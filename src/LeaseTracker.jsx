@@ -1768,7 +1768,11 @@ export default function LeaseTracker() {
 
   // ── Panel ──
 
-  const openPanel = useCallback((id, enterEdit = false) => {
+  // O(1) customer lookup — replaces repeated customers.find() scans
+  // Must be defined before openPanel which depends on it
+  const customersById = useMemo(() => new Map(customers.map(c => [c.id, c])), [customers]);
+
+    const openPanel = useCallback((id, enterEdit = false) => {
     const c = customersById.get(id);
     if (!c) return;
     clearTimeout(closeTimer.current);
@@ -2092,9 +2096,6 @@ export default function LeaseTracker() {
       });
     return { filtered: all, urgentCount: urgent, soonCount: soon, withIncentive: incentive, milesAtRisk: miles };
   }, [customers, debouncedSearch, sortKey, sortDir, statFilter]);
-
-  // O(1) customer lookup — replaces repeated customers.find() scans
-  const customersById = useMemo(() => new Map(customers.map(c => [c.id, c])), [customers]);
 
   const panelVisible = panelState !== "closed";
   const c = snapCustomer;

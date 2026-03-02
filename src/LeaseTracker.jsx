@@ -901,7 +901,7 @@ const css = `
   @keyframes toastOut { from { opacity:1; transform: translateY(0) scale(1); max-height:60px; } to { opacity:0; transform: translateY(4px) scale(0.97); max-height:0; margin-bottom:-6px; } }
   @keyframes toastProgress { from { width: 100%; } to { width: 0%; } }
 
-  /* ── TIMELINE VIEW — Linear-style Gantt ── */
+  /* ── TIMELINE VIEW — CSS Grid Gantt ── */
   .timeline-panel {
     flex: 1; display: flex; flex-direction: column; overflow: hidden;
     background: var(--bg-panel); border-radius: 10px;
@@ -918,138 +918,102 @@ const css = `
   }
   .timeline-title { font-size: 16px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.3px; }
 
-  /* Scroll container — vertical scroll only, full width */
+  /* Outer scroll — fills remaining height, vertical scroll only */
   .tl-scroll {
-    flex: 1; overflow-x: hidden; overflow-y: auto;
+    flex: 1; overflow-y: auto; overflow-x: hidden;
     display: flex; flex-direction: column;
-    position: relative; width: 100%;
+    min-height: 0;
   }
   .tl-scroll::-webkit-scrollbar { width: 4px; }
   .tl-scroll::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 3px; }
 
-  /* Canvas — expands to fill measured width */
-  .tl-canvas {
-    display: flex; flex-direction: column;
-    position: relative; flex-shrink: 0;
+  /* The CSS grid wrapper — 12 equal columns, fills full width */
+  .tl-grid {
+    display: grid;
+    grid-template-rows: auto 1fr;
+    flex: 1; min-height: 0;
   }
 
-  /* Month header row — sticky to top */
+  /* Header row — one cell per month */
   .tl-header-row {
-    display: flex; flex-shrink: 0; position: sticky; top: 0; z-index: 10;
+    display: contents;
+  }
+  .tl-header-cell {
+    position: sticky; top: 0; z-index: 10;
     background: var(--bg-panel);
     border-bottom: 1px solid var(--border-main);
-  }
-  .tl-header-month {
-    flex-shrink: 0; display: flex; flex-direction: column;
     border-right: 1px solid var(--border-main);
-    padding: 0;
-  }
-  .tl-header-month:last-child { border-right: none; }
-  .tl-month-label {
-    padding: 7px 14px 6px;
-    font-size: 10.5px; font-weight: 600; color: var(--text-secondary);
-    letter-spacing: 0.2px; text-transform: uppercase;
+    padding: 8px 12px 7px;
     display: flex; align-items: center; gap: 6px;
   }
+  .tl-header-cell:last-child { border-right: none; }
+  .tl-month-label {
+    font-size: 10.5px; font-weight: 600; color: var(--text-secondary);
+    letter-spacing: 0.2px; text-transform: uppercase;
+    white-space: nowrap;
+  }
   .tl-month-label.is-current { color: var(--border-input-focus); }
+  .app.day .tl-month-label.is-current { color: #4f46e5; }
   .tl-now-badge {
-    font-size: 8.5px; font-weight: 700; letter-spacing: 0.4px;
-    text-transform: uppercase; color: var(--border-input-focus);
-    background: rgba(74,143,212,0.12); border-radius: 3px; padding: 1px 4px;
+    font-size: 8px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
+    color: var(--border-input-focus); background: rgba(74,143,212,0.14);
+    border-radius: 3px; padding: 1px 5px; white-space: nowrap;
   }
   .app.day .tl-now-badge { background: rgba(79,70,229,0.1); color: #4f46e5; }
 
-  /* Content area — rows of cards under the grid */
-  .tl-content {
-    flex: 1; position: relative; display: flex; flex-direction: column;
+  /* Content row — one cell per month, fills remaining height */
+  .tl-body-row {
+    display: contents;
   }
+  .tl-col {
+    border-right: 1px solid var(--border-main);
+    padding: 10px 8px;
+    display: flex; flex-direction: column; gap: 7px;
+    align-items: stretch;
+    min-height: 100%;
+    position: relative;
+  }
+  .tl-col:last-child { border-right: none; }
+  .tl-col.is-current { background: rgba(74,143,212,0.02); }
+  .app.day .tl-col.is-current { background: rgba(79,70,229,0.015); }
 
-  /* Vertical month divider lines drawn as background */
-  .tl-grid-lines {
-    position: absolute; inset: 0; display: flex; pointer-events: none; z-index: 0;
-  }
-  .tl-grid-col {
-    flex-shrink: 0; border-right: 1px solid var(--border-main);
-    height: 100%;
-  }
-  .tl-grid-col.is-current { background: rgba(74,143,212,0.03); }
-  .app.day .tl-grid-col.is-current { background: rgba(79,70,229,0.02); }
-  .tl-grid-col:last-child { border-right: none; }
-
-  /* Today line */
+  /* Today line — absolutely positioned inside month 0 col */
   .tl-today-line {
-    position: absolute; top: 0; bottom: 0; width: 1px; z-index: 2; pointer-events: none;
-    background: var(--border-input-focus); opacity: 0.5;
+    position: absolute; top: 0; bottom: 0; width: 1.5px;
+    background: var(--border-input-focus); opacity: 0.45;
+    pointer-events: none; z-index: 2;
   }
-  .tl-today-label {
-    position: absolute; top: 6px;
-    font-size: 8.5px; font-weight: 700; color: var(--border-input-focus);
-    letter-spacing: 0.3px; transform: translateX(-50%);
-    background: var(--bg-panel); padding: 0 3px; border-radius: 2px;
-  }
+  .app.day .tl-today-line { opacity: 0.35; background: #4f46e5; }
 
-  /* Month section — each month gets a row group */
-  .tl-month-section {
-    display: flex; flex-direction: column; position: relative; z-index: 1;
-  }
-  .tl-month-section-label {
-    padding: 10px 14px 4px;
-    font-size: 9.5px; font-weight: 600; color: var(--text-muted);
-    letter-spacing: 0.4px; text-transform: uppercase;
-    display: flex; align-items: center; gap: 8px;
-    position: sticky; left: 0;
-  }
-  .tl-month-section-label.is-current { color: var(--border-input-focus); }
-  .tl-section-count {
-    font-size: 9.5px; font-weight: 500; color: var(--text-muted);
-    background: var(--bg-hover-sm); border-radius: 8px; padding: 1px 6px;
-  }
-  .tl-month-section-label.is-current .tl-section-count { background: rgba(74,143,212,0.15); color: var(--border-input-focus); }
-  .app.day .tl-month-section-label.is-current .tl-section-count { background: rgba(79,70,229,0.1); color: #4f46e5; }
-
-  /* Cards row within a month section — starts at column offset, wraps right */
-  .tl-month-cards-row {
-    display: flex; flex-wrap: wrap; gap: 7px;
-    padding: 4px 14px 14px;
-    box-sizing: border-box;
-  }
-
-  /* Cards — fluid width, fit within column */
+  /* Cards */
   .tl-card {
     background: var(--bg-card); border: 1px solid var(--border-card);
-    border-radius: 8px; padding: 9px 12px; cursor: pointer;
+    border-radius: 8px; padding: 10px 11px; cursor: pointer;
     transition: border-color 0.12s, background 0.12s, box-shadow 0.12s;
     display: flex; flex-direction: column; gap: 5px;
-    flex: 1; min-width: 120px; max-width: 220px;
+    width: 100%; box-sizing: border-box;
   }
   .tl-card:hover {
     border-color: var(--border-input-focus);
     background: var(--bg-hover);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    box-shadow: 0 4px 14px rgba(0,0,0,0.10);
   }
   .tl-card.urgent { border-left: 2px solid #7aa4e0; }
   .app.day .tl-card.urgent { border-left: 2px solid #4f46e5; }
 
-  .tl-card-name { font-size: 12.5px; font-weight: 500; color: var(--text-name); letter-spacing: -0.1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tl-card-name    { font-size: 12.5px; font-weight: 500; color: var(--text-name); letter-spacing: -0.1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .tl-card-vehicle { font-size: 11px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .tl-card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 2px; }
-  .tl-card-time { font-size: 10.5px; font-weight: 600; }
-  .tl-card-status { font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 4px; border: 1px solid transparent; }
-  .tl-card-badges { display: flex; align-items: center; gap: 4px; margin-top: 3px; flex-wrap: wrap; }
-  .tl-badge-incentive { font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 4px; background: rgba(251,191,36,0.12); color: #d97706; border: 1px solid rgba(251,191,36,0.25); letter-spacing: 0.1px; }
+  .tl-card-footer  { display: flex; align-items: center; justify-content: space-between; margin-top: 2px; gap: 4px; }
+  .tl-card-time    { font-size: 10.5px; font-weight: 600; white-space: nowrap; }
+  .tl-card-status  { font-size: 10.5px; font-weight: 500; padding: 2px 7px; border-radius: 4px; border: 1px solid transparent; white-space: nowrap; }
+  .tl-card-badges  { display: flex; align-items: center; gap: 4px; margin-top: 2px; flex-wrap: wrap; }
+  .tl-badge-incentive { font-size: 10.5px; font-weight: 500; padding: 2px 7px; border-radius: 4px; background: rgba(251,191,36,0.12); color: #d97706; border: 1px solid rgba(251,191,36,0.25); }
   .app:not(.day) .tl-badge-incentive { background: rgba(251,191,36,0.1); color: #f59e0b; border-color: rgba(251,191,36,0.2); }
-  .tl-badge-miles { font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 4px; background: rgba(239,68,68,0.1); color: #dc2626; border: 1px solid rgba(239,68,68,0.2); letter-spacing: 0.1px; }
+  .tl-badge-miles  { font-size: 10.5px; font-weight: 500; padding: 2px 7px; border-radius: 4px; background: rgba(239,68,68,0.1); color: #dc2626; border: 1px solid rgba(239,68,68,0.2); }
   .app:not(.day) .tl-badge-miles { background: rgba(248,113,113,0.1); color: #f87171; border-color: rgba(248,113,113,0.2); }
 
-  /* Month divider inside content */
-  .tl-month-divider {
-    height: 1px; background: var(--border-main);
-    margin: 0 14px;
-  }
-
   .tl-panel-overlay {
-    position: absolute; top: 0; right: 0; bottom: 0;
-    width: 55%; z-index: 20;
+    position: absolute; top: 0; right: 0; bottom: 0; width: 55%; z-index: 20;
     animation: panelIn 0.22s cubic-bezier(0.16,1,0.3,1) forwards;
   }
   .tl-backdrop {
@@ -1063,7 +1027,8 @@ const css = `
     justify-content: center; gap: 8px; opacity: 0.5;
   }
   .timeline-empty-state-title { font-size: 13px; font-weight: 500; color: var(--text-tertiary); }
-  .timeline-empty-state-sub { font-size: 12px; color: var(--text-muted); }
+  .timeline-empty-state-sub   { font-size: 12px; color: var(--text-muted); }
+
 
 
 `;
@@ -1161,47 +1126,44 @@ function ToastContainer({ toasts, isDayMode }) {
 
 
 
-// ── TIMELINE VIEW — Linear-style Gantt ──────────────────────────────────────
+// ── TIMELINE VIEW — CSS Grid Gantt ──────────────────────────────────────────
 
 const TIMELINE_MONTHS = 12;
 
 function TimelineView({ customers, isDayMode, openPanel, openModal }) {
   const now = useRef(new Date()).current;
-  const [tlSearch, setTlSearch] = useState("");
+  const [tlSearch, setTlSearch] = useState('');
   const containerRef = useRef(null);
-  const [colWidth, setColWidth] = useState(0);
+  const [gridWidth, setGridWidth] = useState(0);
 
-  // Measure container width, divide evenly across 12 columns, min 140px
+  // Measure container so we can set grid-template-columns dynamically
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    const measure = () => {
-      const w = el.getBoundingClientRect().width;
-      setColWidth(Math.max(140, Math.floor(w / TIMELINE_MONTHS)));
-    };
+    const measure = () => setGridWidth(el.getBoundingClientRect().width);
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
 
-  // 12 months from current month, recalculated each render so it auto-updates
+  // colWidth: spread 12 columns evenly, scrollbar ~8px, min 130px
+  const colWidth = gridWidth > 0 ? Math.max(130, Math.floor((gridWidth - 8) / TIMELINE_MONTHS)) : 0;
+
+  // 12 months starting from this month — recomputes automatically each month
   const months = useMemo(() =>
     Array.from({ length: TIMELINE_MONTHS }, (_, i) =>
       new Date(now.getFullYear(), now.getMonth() + i, 1)
     ), []);
 
-  const totalWidth = colWidth * TIMELINE_MONTHS;
+  // Today line: % within current month column
+  const todayPct = useMemo(() => {
+    const ms = new Date(now.getFullYear(), now.getMonth(), 1);
+    const me = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    return ((now - ms) / (me - ms)) * 100;
+  }, []);
 
-  // Today line: fractional position within current month column
-  const todayOffset = useMemo(() => {
-    if (!colWidth) return 0;
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const monthEnd   = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-    return ((now - monthStart) / (monthEnd - monthStart)) * colWidth;
-  }, [colWidth]);
-
-  // Bucket customers by lease-end month
+  // Bucket customers by lease-end month key
   const buckets = useMemo(() => {
     const map = new Map();
     months.forEach(m => map.set(`${m.getFullYear()}-${m.getMonth()}`, []));
@@ -1217,11 +1179,13 @@ function TimelineView({ customers, isDayMode, openPanel, openModal }) {
       }
       map.get(key).push(c);
     });
-    map.forEach(arr => arr.sort((a,b) => parseDateVal(a.leaseEnd) - parseDateVal(b.leaseEnd)));
+    map.forEach(arr => arr.sort((a, b) => parseDateVal(a.leaseEnd) - parseDateVal(b.leaseEnd)));
     return map;
   }, [customers, months, tlSearch]);
 
   const total = useMemo(() => { let n = 0; buckets.forEach(a => n += a.length); return n; }, [buckets]);
+
+  const gridTemplateColumns = colWidth > 0 ? `repeat(${TIMELINE_MONTHS}, ${colWidth}px)` : `repeat(${TIMELINE_MONTHS}, 1fr)`;
 
   return (
     <div className="timeline-panel">
@@ -1232,95 +1196,80 @@ function TimelineView({ customers, isDayMode, openPanel, openModal }) {
         <button className="btn-primary" onClick={openModal}><UserPlus size={13} strokeWidth={2} />New Customer</button>
       </div>
 
-      <div className="tl-scroll" ref={containerRef}>
-        {colWidth > 0 && (
-          <>
-            {/* Sticky header — all 12 months always visible */}
-            <div className="tl-header-row" style={{ width: totalWidth }}>
+      {total === 0 && !colWidth ? null : (
+        <div className="tl-scroll" ref={containerRef}>
+          {colWidth > 0 && (
+            <div className="tl-grid" style={{ gridTemplateColumns }}>
+
+              {/* ── Header row: one cell per month ── */}
               {months.map((m, i) => (
-                <div key={i} className="tl-header-month" style={{ width: colWidth }}>
-                  <div className={`tl-month-label${i === 0 ? ' is-current' : ''}`}>
+                <div key={`h${i}`} className="tl-header-cell">
+                  <span className={`tl-month-label${i === 0 ? ' is-current' : ''}`}>
                     {MONTH_SHORT[m.getMonth()]} {m.getFullYear()}
-                    {i === 0 && <span className="tl-now-badge">Now</span>}
-                  </div>
+                  </span>
+                  {i === 0 && <span className="tl-now-badge">Now</span>}
                 </div>
               ))}
-            </div>
 
-            {/* Canvas with grid + cards */}
-            <div className="tl-canvas" style={{ width: totalWidth }}>
-
-              {/* Vertical column backgrounds */}
-              <div className="tl-grid-lines" style={{ width: totalWidth }}>
-                {months.map((_, i) => (
-                  <div key={i} className={`tl-grid-col${i === 0 ? ' is-current' : ''}`} style={{ width: colWidth }} />
-                ))}
-              </div>
-
-              {/* Today marker line */}
-              <div className="tl-today-line" style={{ left: todayOffset }} />
-
-              {total === 0 ? (
-                <div className="timeline-empty-state" style={{ position: 'relative', zIndex: 1 }}>
-                  <span className="timeline-empty-state-title">{tlSearch ? "No matches" : "No upcoming lease ends"}</span>
-                  <span className="timeline-empty-state-sub">{tlSearch ? "Try a different search" : "Add customers to see them here"}</span>
-                </div>
-              ) : months.map((m, monthIdx) => {
+              {/* ── Body row: one column cell per month ── */}
+              {months.map((m, i) => {
                 const key   = `${m.getFullYear()}-${m.getMonth()}`;
                 const cards = buckets.get(key) || [];
-                if (cards.length === 0) return null;
-                const isCurrent = monthIdx === 0;
+                const isCurrent = i === 0;
 
                 return (
-                  <div key={key} className="tl-month-section">
-                    <div className="tl-month-divider" />
-                    <div className={`tl-month-section-label${isCurrent ? ' is-current' : ''}`}>
-                      {MONTH_SHORT[m.getMonth()]} {m.getFullYear()}
-                      <span className="tl-section-count">{cards.length}</span>
-                    </div>
-                    {/* Cards indented to align under their month column */}
-                    <div className="tl-month-cards-row" style={{ paddingLeft: monthIdx * colWidth }}>
-                      {cards.map(c => {
-                        const ml  = calcMonthsLeft(c.leaseEnd);
-                        const dl  = calcDaysLeft(c.leaseEnd);
-                        const urgent = ml === 0;
-                        const timeColor = ml === 0
-                          ? (isDayMode ? '#4f46e5' : '#7aa4e0')
-                          : ml <= 3
-                          ? (isDayMode ? '#2563eb' : '#5a84c0')
-                          : 'var(--text-secondary)';
-                        const timeStr = ml === 0 ? (dl <= 0 ? 'Today' : `${dl}d left`) : `${ml} mo`;
-                        const sm  = statusMeta(c.status);
-                        const vehicle = [c.year, c.model, c.trim && c.trim !== '—' ? c.trim : null].filter(Boolean).join(' ');
-                        const hasIncentive = c.privateIncentive > 0;
-                        const mp  = calcMileagePace(c);
-                        const hasMiles = mp && (mp.status === 'over' || mp.status === 'warning');
+                  <div key={`b${i}`} className={`tl-col${isCurrent ? ' is-current' : ''}`}>
+                    {/* Today line only in current month column */}
+                    {isCurrent && (
+                      <div className="tl-today-line" style={{ left: `${todayPct}%` }} />
+                    )}
 
-                        return (
-                          <div key={c.id} className={`tl-card${urgent ? ' urgent' : ''}`} onClick={() => openPanel(c.id)}>
-                            <span className="tl-card-name">{c.name}</span>
-                            {vehicle && <span className="tl-card-vehicle">{vehicle}</span>}
-                            <div className="tl-card-footer">
-                              <span className="tl-card-time" style={{ color: timeColor }}>{timeStr}</span>
-                              <span className="tl-card-status" style={{ background: sm.color + '22', color: sm.color, borderColor: sm.color + '44' }}>{sm.label}</span>
-                            </div>
-                            {(hasIncentive || hasMiles) && (
-                              <div className="tl-card-badges">
-                                {hasIncentive && <span className="tl-badge-incentive">${Number(c.privateIncentive).toLocaleString()} · {c.incentiveExp && c.incentiveExp !== '—' ? c.incentiveExp : 'incentive'}</span>}
-                                {hasMiles && <span className="tl-badge-miles">{mp.status === 'over' ? `+${Math.abs(mp.overage).toLocaleString()} mi over` : 'miles at risk'}</span>}
-                              </div>
-                            )}
+                    {total === 0 && i === 0 ? (
+                      <div className="timeline-empty-state" style={{ gridColumn: `1 / ${TIMELINE_MONTHS + 1}`, position: 'relative', zIndex: 1 }}>
+                        <span className="timeline-empty-state-title">{tlSearch ? 'No matches' : 'No upcoming lease ends'}</span>
+                        <span className="timeline-empty-state-sub">{tlSearch ? 'Try a different search' : 'Add customers to see them here'}</span>
+                      </div>
+                    ) : cards.map(c => {
+                      const ml  = calcMonthsLeft(c.leaseEnd);
+                      const dl  = calcDaysLeft(c.leaseEnd);
+                      const urgent = ml === 0;
+                      const timeColor = ml === 0
+                        ? (isDayMode ? '#4f46e5' : '#7aa4e0')
+                        : ml <= 3
+                        ? (isDayMode ? '#2563eb' : '#5a84c0')
+                        : 'var(--text-secondary)';
+                      const timeStr = ml === 0 ? (dl <= 0 ? 'Today' : `${dl}d left`) : `${ml} mo`;
+                      const sm = statusMeta(c.status);
+                      const vehicle = [c.year, c.model, c.trim && c.trim !== '—' ? c.trim : null].filter(Boolean).join(' ');
+                      const hasIncentive = c.privateIncentive > 0;
+                      const mp = calcMileagePace(c);
+                      const hasMiles = mp && (mp.status === 'over' || mp.status === 'warning');
+
+                      return (
+                        <div key={c.id} className={`tl-card${urgent ? ' urgent' : ''}`} onClick={() => openPanel(c.id)}>
+                          <span className="tl-card-name">{c.name}</span>
+                          {vehicle && <span className="tl-card-vehicle">{vehicle}</span>}
+                          <div className="tl-card-footer">
+                            <span className="tl-card-time" style={{ color: timeColor }}>{timeStr}</span>
+                            <span className="tl-card-status" style={{ background: sm.color + '22', color: sm.color, borderColor: sm.color + '44' }}>{sm.label}</span>
                           </div>
-                        );
-                      })}
-                    </div>
+                          {(hasIncentive || hasMiles) && (
+                            <div className="tl-card-badges">
+                              {hasIncentive && <span className="tl-badge-incentive">${Number(c.privateIncentive).toLocaleString()} · {c.incentiveExp && c.incentiveExp !== '—' ? c.incentiveExp : 'incentive'}</span>}
+                              {hasMiles && <span className="tl-badge-miles">{mp.status === 'over' ? `+${Math.abs(mp.overage).toLocaleString()} mi over` : 'miles at risk'}</span>}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 );
               })}
+
             </div>
-          </>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

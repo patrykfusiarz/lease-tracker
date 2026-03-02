@@ -1802,6 +1802,18 @@ export default function LeaseTracker() {
     setPanelState("open");
   }, [customers, customersById]);
 
+  // Returns true if editForm differs from the saved customer data
+  const hasUnsavedEdits = useCallback(() => {
+    if (!editMode || !snapCustomer) return false;
+    const fields = ["name","year","model","trim","bank","term","milesYearly","milesTerm",
+      "currentMiles","monthlyPayment","downPayment","tradeEquity","leaseEnd","privateIncentive","incentiveExp"];
+    return fields.some(k => {
+      const formVal = String(editForm[k] ?? "").trim().replace(/,/g,"");
+      const custVal = String(snapCustomer[k] ?? "").trim().replace(/,/g,"");
+      return formVal !== custVal;
+    });
+  }, [editMode, editForm, snapCustomer]);
+
   const closePanelImmediate = useCallback(() => {
     clearTimeout(closeTimer.current);
     setEditMode(false);
@@ -1889,17 +1901,6 @@ export default function LeaseTracker() {
     setEditMode(true);
   }, []);
 
-  // Returns true if editForm differs from the saved customer data
-  const hasUnsavedEdits = useCallback(() => {
-    if (!editMode || !snapCustomer) return false;
-    const fields = ["name","year","model","trim","bank","term","milesYearly","milesTerm",
-      "currentMiles","monthlyPayment","downPayment","tradeEquity","leaseEnd","privateIncentive","incentiveExp"];
-    return fields.some(k => {
-      const formVal = String(editForm[k] ?? "").trim().replace(/,/g,"");
-      const custVal = String(snapCustomer[k] ?? "").trim().replace(/,/g,"");
-      return formVal !== custVal;
-    });
-  }, [editMode, editForm, snapCustomer]);
 
   const saveEdit = useCallback(async () => {
     if (!selected || editSaving) return;
@@ -2150,7 +2151,7 @@ export default function LeaseTracker() {
 
   if (dbLoading) return (
     <div style={{ minHeight:"100vh", background:"#0e1117", display:"flex", alignItems:"center", justifyContent:"center" }}>
-      <div style={{ width:28, height:28, border:"2px solid var(--border-main)", borderTopColor:"var(--border-input-focus)", borderRadius:"50%", animation:"spin 0.7s linear infinite" }} />
+      <div style={{ width:28, height:28, border:"2px solid #1e2535", borderTopColor:"#4a8fd4", borderRadius:"50%", animation:"spin 0.7s linear infinite" }} />
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );

@@ -673,6 +673,11 @@ const css = `
   .customer-row:hover { background: var(--bg-hover); }
   .customer-row:hover .row-actions { opacity: 1; pointer-events: all; }
   .customer-row.selected { background: var(--bg-row-selected); }
+  /* Urgency left-border on rows */
+  .customer-row.row-urgent { border-left: 2px solid #7aa4e0; padding-left: 12px; }
+  .customer-row.row-soon   { border-left: 2px solid #4a6ea8; padding-left: 12px; }
+  .app.day .customer-row.row-urgent { border-left-color: #4f46e5; }
+  .app.day .customer-row.row-soon   { border-left-color: #818cf8; }
 
   .row-actions { position: absolute; right: 0; top: 50%; transform: translateY(-50%); display: flex; align-items: center; gap: 4px; opacity: 0; pointer-events: none; transition: opacity 0.12s; z-index: 5; }
   .row-action-btn { display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 5px; border: 1px solid var(--border-input); background: var(--bg-panel); cursor: pointer; color: var(--text-secondary); transition: all 0.1s; }
@@ -971,6 +976,7 @@ const css = `
   }
   .tl-nav-btn:hover:not(:disabled) { background: var(--bg-hover); color: var(--text-primary); border-color: var(--border-status); }
   .tl-nav-btn:disabled { opacity: 0.25; cursor: default; }
+  .tl-kbd-hint { display: flex; align-items: center; gap: 3px; opacity: 0.5; }
   .tl-page-info { font-size: 11px; color: var(--text-secondary); white-space: nowrap; font-weight: 500; }
 
   /* Content row — one cell per month, fills remaining height */
@@ -1221,6 +1227,18 @@ function TimelineView({ customers, isDayMode, openPanel, openModal }) {
       : `${MONTH_SHORT[first.getMonth()]} ${first.getFullYear()} – ${MONTH_SHORT[last.getMonth()]} ${last.getFullYear()}`;
   }, [safePage, visibleCols, months, needsPagination]);
 
+  // Keyboard left/right arrows to paginate timeline
+  useEffect(() => {
+    const handler = (e) => {
+      const tag = document.activeElement?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if (e.key === 'ArrowLeft')  setPage(p => Math.max(0, p - 2));
+      if (e.key === 'ArrowRight') setPage(p => Math.min(maxPage, p + 2));
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [maxPage]);
+
   const totalStripWidth = colWidth * TIMELINE_MONTHS;
 
   return (
@@ -1229,11 +1247,15 @@ function TimelineView({ customers, isDayMode, openPanel, openModal }) {
         <span className="timeline-title">Timeline</span>
         {needsPagination && (
           <>
-            <button className="tl-nav-btn" disabled={safePage === 0} onClick={() => setPage(p => Math.max(0, p - 1))}>
+            <button className="tl-nav-btn" disabled={safePage === 0} onClick={() => setPage(p => Math.max(0, p - 2))}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
             </button>
             <span className="tl-page-info">{rangeLabel}</span>
-            <button className="tl-nav-btn" disabled={safePage >= maxPage} onClick={() => setPage(p => Math.min(maxPage, p + 1))}>
+            <span className="tl-kbd-hint">
+              <kbd className="kbd">←</kbd>
+              <kbd className="kbd">→</kbd>
+            </span>
+            <button className="tl-nav-btn" disabled={safePage >= maxPage} onClick={() => setPage(p => Math.min(maxPage, p + 2))}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
             </button>
           </>

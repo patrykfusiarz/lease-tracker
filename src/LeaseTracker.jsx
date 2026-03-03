@@ -6,7 +6,7 @@ import { Layers, LogOut, UserPlus, X, ChevronsUpDown, ChevronUp, ChevronDown, Pe
 
 // ── CONSTANTS ─────────────────────────────────────────────────────────────────
 
-const GRID = "2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 56px";
+const GRID = "2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1.5fr 56px";
 
 const COLUMNS = [
   { label: "Name",       key: "name"                },
@@ -29,9 +29,9 @@ const STATUSES = [
   { key: "contact",       label: "Contact",      color: "#6870b8", order: 2 },
   { key: "waiting",       label: "Waiting",      color: "#8878a8", order: 3 },
   { key: "success",       label: "Success",      color: "#3a8a6a", order: 4 },
-  { key: "lease_return",  label: "Lease Return", color: "#3a7a9a", order: 5 },
-  { key: "buyout",        label: "Buy Out",      color: "#4a5ab0", order: 6 },
-  { key: "lost",          label: "Lost Deal",    color: "#9a4050", order: 7 },
+  { key: "lease_return",  label: "Lease Return", short: "Return",  color: "#3a7a9a", order: 5 },
+  { key: "buyout",        label: "Buy Out",      short: "Buy Out", color: "#4a5ab0", order: 6 },
+  { key: "lost",          label: "Lost Deal",    short: "Lost",    color: "#9a4050", order: 7 },
 ];
 
 const STATUS_MAP = new Map(STATUSES.map(s => [s.key, s]));
@@ -2264,7 +2264,7 @@ export default function LeaseTracker() {
                         <div className="status-cell">
                           <span className="status-pill" style={{ background: sm.color + "22", borderColor: sm.color + "55", color: sm.color, flexShrink: 0 }}>
                             <span className="status-dot" style={{ background: sm.color }} />
-                            {sm.label}
+                            {sm.short ?? sm.label}
                           </span>
                           {milesOver && <span className="signal-tag miles">Miles Over</span>}
                           {!milesOver && milesWarn && <span className="signal-tag miles-warn">Miles Risk</span>}

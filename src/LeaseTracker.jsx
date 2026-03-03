@@ -551,11 +551,18 @@ const css = `
     display: flex; flex-direction: column;
     transition: width 0.2s cubic-bezier(0.16,1,0.3,1), min-width 0.2s cubic-bezier(0.16,1,0.3,1);
     overflow: hidden;
+    border-right: 1px solid var(--border-main);
   }
   .sidebar.collapsed { width: 52px; min-width: 52px; }
-  .app.day .sidebar { border-right: none; }
+  .app.day .sidebar { border-right: 1px solid var(--border-main); }
 
-  .sidebar-header { padding: 14px 10px 8px 14px; display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+  .sidebar-brand { padding: 18px 16px 10px; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .sidebar-brand-mark { width: 22px; height: 22px; border-radius: 6px; background: linear-gradient(135deg, #2a5caa 0%, #1a3a6e 100%); display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 2px 8px rgba(42,92,170,0.4); }
+  .sidebar-brand-text { font-size: 11px; font-weight: 700; letter-spacing: 1.8px; text-transform: uppercase; color: var(--text-primary); opacity: 0.7; }
+  .app.day .sidebar-brand-mark { box-shadow: 0 2px 8px rgba(42,92,170,0.25); }
+  .sidebar.collapsed .sidebar-brand-text { display: none; }
+  .sidebar.collapsed .sidebar-brand { justify-content: center; padding: 16px 10px 8px; }
+  .sidebar-header { padding: 4px 10px 8px 14px; display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
   .profile-btn { display: flex; align-items: center; gap: 9px; cursor: pointer; user-select: none; padding: 5px 7px; border-radius: 7px; transition: background 0.1s; flex: 1; min-width: 0; overflow: hidden; }
   .profile-btn:hover { background: var(--bg-hover-sm); }
   .sidebar-collapse-btn { display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 5px; border: none; background: transparent; color: var(--text-secondary); cursor: pointer; flex-shrink: 0; transition: background 0.1s, color 0.1s; }
@@ -575,12 +582,13 @@ const css = `
 
   .profile-avatar {
     width: 28px; height: 28px;
-    background: var(--bg-hover-sm);
+    background: linear-gradient(135deg, #1e2d4a 0%, #252d3e 100%);
     border-radius: 7px;
     display: flex; align-items: center; justify-content: center;
-    font-size: 10px; font-weight: 700; color: var(--text-secondary); letter-spacing: 0.3px; flex-shrink: 0;
-    border: 1px solid var(--border-input);
+    font-size: 10px; font-weight: 700; color: #7aa4e0; letter-spacing: 0.3px; flex-shrink: 0;
+    border: 1px solid #2a3a5a;
   }
+  .app.day .profile-avatar { background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); color: #2563eb; border-color: #bfdbfe; }
   .profile-name { font-size: 13px; font-weight: 500; color: var(--text-primary); letter-spacing: -0.1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
   .sidebar-body { flex: 1; padding: 6px 8px 8px; display: flex; flex-direction: column; gap: 1px; }
@@ -590,10 +598,14 @@ const css = `
   .nav-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; cursor: pointer; font-size: 13px; color: var(--text-nav); font-weight: 400; transition: background 0.08s, color 0.08s; user-select: none; }
   .nav-item:hover { background: var(--bg-hover-sm); color: var(--text-cell); }
   .nav-item.active { font-weight: 500; }
-  /* Day mode active: white card with shadow — Mercury style */
+  /* Day mode active */
   .app.day .nav-item.active { background: rgba(0,0,0,0.04); color: #111827; box-shadow: none; }
   /* Night mode active */
   .app:not(.day) .nav-item.active { background: var(--bg-hover); color: var(--text-primary); }
+  /* Active indicator */
+  .nav-item.active { position: relative; }
+  .nav-item.active::before { content: ""; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 2.5px; height: 14px; border-radius: 0 2px 2px 0; background: var(--border-input-focus); }
+  .app.day .nav-item.active::before { background: #4f46e5; }
 
   .nav-icon { display: flex; align-items: center; justify-content: center; opacity: 0.45; width: 16px; flex-shrink: 0; }
   .nav-item.active .nav-icon { opacity: 0.65; }
@@ -629,8 +641,9 @@ const css = `
   }
 
   /* ── TOPBAR ── */
-  .topbar { display: flex; align-items: center; gap: 10px; padding: 0 18px; height: 46px; border-bottom: 1px solid var(--border-main); flex-shrink: 0; border-radius: 10px 10px 0 0; background: var(--bg-panel); }
-  .topbar-title { font-size: 16px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.3px; }
+  .topbar { display: flex; align-items: center; gap: 8px; padding: 0 16px; height: 48px; border-bottom: 1px solid var(--border-main); flex-shrink: 0; border-radius: 10px 10px 0 0; background: var(--bg-panel); }
+  .topbar-title { font-size: 15px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.3px; }
+  .topbar-divider { width: 1px; height: 16px; background: var(--border-main); flex-shrink: 0; }
   .spacer { flex: 1; }
 
   .search-box { background: var(--bg-input); border: 1px solid var(--border-input); border-radius: 6px; padding: 0 10px; height: 28px; font-size: 12px; font-family: 'Inter', sans-serif; color: var(--text-cell); width: 160px; outline: none; transition: border-color 0.2s, width 0.25s cubic-bezier(0.16,1,0.3,1), box-shadow 0.2s; }
@@ -658,10 +671,13 @@ const css = `
 
   /* ── STATS BAR ── */
   .stats-bar { display: flex; border-bottom: 1px solid var(--border-main); flex-shrink: 0; background: var(--bg-panel); }
-  .stat-item { flex: 1; padding: 12px 18px 11px; border-right: 1px solid var(--border-main); display: flex; flex-direction: column; gap: 3px; cursor: pointer; transition: background 0.1s; user-select: none; }
+  .stat-item { flex: 1; padding: 14px 18px 12px; border-right: 1px solid var(--border-main); display: flex; flex-direction: column; gap: 4px; cursor: pointer; transition: background 0.12s; user-select: none; position: relative; }
+  .stat-item::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: transparent; transition: background 0.15s; border-radius: 0; }
+  .stat-item.active::before { background: currentColor; }
+  .stat-item:hover { background: var(--bg-hover); }
   .stat-item:last-child { border-right: none; }
-  .stat-value { font-size: 18px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.4px; line-height: 1.15; }
-  .stat-label { font-size: 10px; color: var(--text-secondary); letter-spacing: 0.2px; font-weight: 500; }
+  .stat-value { font-size: 22px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.8px; line-height: 1.1; }
+  .stat-label { font-size: 10.5px; color: var(--text-secondary); letter-spacing: 0.1px; font-weight: 500; }
 
   /* ── TABLE ── */
   .table-wrap { flex: 1; overflow-y: auto; overflow-x: auto; }
@@ -669,7 +685,7 @@ const css = `
   .table-wrap::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 3px; }
 
   .col-headers { display: grid; grid-template-columns: ${GRID}; padding: 0 14px; height: 32px; align-items: center; border-bottom: 1px solid var(--border-main); position: sticky; top: 0; background: var(--bg-panel); z-index: 10; min-width: 0; }
-  .col-header { font-size: 10px; color: var(--text-secondary); font-weight: 500; letter-spacing: 0.3px; text-transform: uppercase; display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none; transition: color 0.1s; height: 100%; }
+  .col-header { font-size: 10px; color: var(--text-tertiary); font-weight: 600; letter-spacing: 0.4px; text-transform: uppercase; display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none; transition: color 0.1s; height: 100%; }
   .col-header:hover { color: var(--text-primary); }
   .col-header.active { color: var(--border-input-focus); }
   .app:not(.day) .col-header.active { color: #7aa4e0; }
@@ -678,7 +694,8 @@ const css = `
 
   .customer-row { display: grid; grid-template-columns: ${GRID}; padding: 0 14px; height: 46px; align-items: center; border-bottom: 1px solid var(--border-sidebar); cursor: pointer; transition: background 0.08s; user-select: none; }
   .density-compact .customer-row { height: 34px; }
-  .customer-row:hover { background: var(--bg-hover); }
+  .customer-row:hover { background: var(--bg-hover); box-shadow: inset 3px 0 0 var(--border-input); }
+  .customer-row.row-urgent:hover, .customer-row.row-soon:hover, .customer-row.row-expired:hover { box-shadow: none; }
   .customer-row:hover .row-actions { opacity: 1; pointer-events: all; }
   .customer-row.selected { background: var(--bg-row-selected); }
   /* Urgency left-border on rows */
@@ -710,7 +727,7 @@ const css = `
   .incentive-warn-dot { width: 5px; height: 5px; border-radius: 50%; background: #f59e0b; flex-shrink: 0; box-shadow: 0 0 5px #f59e0b88; display: inline-block; vertical-align: middle; }
   .cell-lease-end { font-size: 12px; color: var(--text-cell); }
   .months-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 500; }
-  .status-pill { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; letter-spacing: 0.1px; border: 1px solid transparent; white-space: nowrap; }
+  .status-pill { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px; border-radius: 6px; font-size: 11px; font-weight: 500; letter-spacing: 0.1px; border: 1px solid transparent; white-space: nowrap; }
 
   /* ── STATUS SELECTOR ── */
   .status-selector { padding: 12px 18px 14px; border-bottom: 1px solid var(--border-main); flex-shrink: 0; }
@@ -722,7 +739,7 @@ const css = `
   .status-option.flashing { animation: statusFlash 0.3s ease; }
   .status-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
   .status-cell { display: flex; align-items: center; gap: 5px; flex-wrap: nowrap; overflow: hidden; }
-  .signal-tag { display: inline-flex; align-items: center; font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 4px; white-space: nowrap; letter-spacing: 0.1px; flex-shrink: 0; border: 1px solid transparent; }
+  .signal-tag { display: inline-flex; align-items: center; font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 6px; white-space: nowrap; letter-spacing: 0.1px; flex-shrink: 0; border: 1px solid transparent; }
   .signal-tag.miles { background: rgba(248,113,113,0.12); color: #f87171; border: 1px solid rgba(248,113,113,0.25); }
   .signal-tag.miles-warn { background: rgba(251,191,36,0.12); color: #f59e0b; border: 1px solid rgba(251,191,36,0.25); }
   .signal-tag.accident { background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
@@ -737,7 +754,7 @@ const css = `
 
   /* ── EMPTY STATE ── */
   .empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 40px; }
-  .empty-state-icon { opacity: 0.18; margin-bottom: 6px; }
+  .empty-state-icon { opacity: 0.12; margin-bottom: 8px; }
   .empty-state-title { font-size: 13px; font-weight: 500; color: var(--text-tertiary); }
   .empty-state-sub   { font-size: 12px; color: var(--text-muted); }
 
@@ -776,10 +793,11 @@ const css = `
   .detail-panel.enter .detail-meta-grid-wrap { animation-delay: 0.07s; }
   .detail-panel.enter .detail-body { animation-delay: 0.1s; }
 
-  .detail-topbar { display: flex; align-items: center; gap: 8px; padding: 16px 18px 14px; border-bottom: 1px solid var(--border-main); flex-shrink: 0; border-radius: 10px 10px 0 0; background: var(--bg-card); }
-  .detail-lead-name { font-size: 18px; font-weight: 500; color: var(--text-primary); letter-spacing: -0.4px; line-height: 1.2; }
-  .detail-lead-sub  { font-size: 12px; font-weight: 400; color: var(--text-secondary); letter-spacing: -0.1px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .detail-close { display: flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 6px; background: transparent; border: none; cursor: pointer; color: var(--text-secondary); transition: background 0.1s, color 0.1s; margin-left: auto; }
+  .detail-topbar { display: flex; align-items: flex-start; gap: 10px; padding: 18px 18px 16px; border-bottom: 1px solid var(--border-main); flex-shrink: 0; border-radius: 10px 10px 0 0; background: var(--bg-card); }
+  .detail-topbar-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; padding-top: 2px; }
+  .detail-lead-name { font-size: 20px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.6px; line-height: 1.15; }
+  .detail-lead-sub  { font-size: 12.5px; font-weight: 400; color: var(--text-secondary); letter-spacing: -0.1px; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .detail-close { display: flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 6px; background: transparent; border: none; cursor: pointer; color: var(--text-secondary); transition: background 0.1s, color 0.1s; }
   .detail-close:hover { background: var(--bg-hover); color: var(--text-cell); }
 
   .detail-edit-btn { display: flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 6px; background: transparent; border: 1px solid var(--border-input); cursor: pointer; color: var(--text-secondary); font-size: 11.5px; font-family: 'Inter', sans-serif; font-weight: 500; transition: all 0.1s; }
@@ -790,7 +808,7 @@ const css = `
 
   /* Meta grid */
   .detail-meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border-main); border-bottom: 1px solid var(--border-main); flex-shrink: 0; }
-  .detail-meta-cell { background: var(--bg-card); padding: 11px 16px; display: flex; flex-direction: column; gap: 3px; }
+  .detail-meta-cell { background: var(--bg-card); padding: 12px 16px; display: flex; flex-direction: column; gap: 4px; }
   .detail-meta-label { font-size: 9.5px; color: var(--text-secondary); font-weight: 500; letter-spacing: 0.3px; text-transform: uppercase; }
   .detail-meta-value { font-size: 12.5px; color: var(--text-primary); font-weight: 400; }
   .detail-meta-value.urgent  { color: #7aa4e0; }
@@ -837,7 +855,7 @@ const css = `
   .note-entry:last-child { padding-bottom: 0; }
   .note-timeline-col { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; width: 14px; padding-top: 3px; }
   .note-timeline-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border-input); border: 1.5px solid var(--border-status); flex-shrink: 0; z-index: 1; }
-  .note-entry:first-child .note-timeline-dot { background: var(--border-input-focus); border-color: var(--border-input-focus); }
+  .note-entry:first-child .note-timeline-dot { background: var(--border-input-focus); border-color: var(--border-input-focus); box-shadow: 0 0 6px rgba(74,143,212,0.5); }
   .note-timeline-line { width: 1px; flex: 1; background: var(--border-main); margin-top: 4px; }
   .note-entry:last-child .note-timeline-line { display: none; }
   .note-entry-body { flex: 1; min-width: 0; }
@@ -853,7 +871,7 @@ const css = `
   .app.day .modal-overlay { backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
   .modal {
     background: var(--bg-panel); border: 1px solid var(--border-card); border-radius: 14px; width: 480px; overflow: hidden;
-    box-sizing: border-box; box-shadow: 0 32px 80px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.04);
+    box-sizing: border-box; box-shadow: 0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05), 0 1px 0 rgba(255,255,255,0.08) inset;
     animation: modalIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
   }
   .app.day .modal { box-shadow: 0 8px 40px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.05); border-color: #e8eaef; }
@@ -2086,7 +2104,15 @@ export default function LeaseTracker() {
         {/* SIDEBAR */}
         <aside className={`sidebar${sidebarCollapsed ? " collapsed" : ""}`}>
 
-          {/* Header — avatar + name + collapse arrow when expanded */}
+          {/* Brand mark */}
+          <div className="sidebar-brand">
+            <div className="sidebar-brand-mark">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 10L6 2L10 10M3.5 7.5h5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </div>
+            <span className="sidebar-brand-text">Meridian</span>
+          </div>
+
+          {/* Header — avatar + collapse */}
           <div className="sidebar-header">
             <div className="profile-btn" onClick={() => setShowSettings(true)} title="Account settings">
               <div className="profile-avatar" style={{ overflow: user?.avatarUrl ? "hidden" : undefined, padding: 0 }}>
@@ -2148,6 +2174,7 @@ export default function LeaseTracker() {
             <div className="topbar">
               <span className="topbar-title">Maturities</span>
               <div className="spacer" />
+              <div className="topbar-divider" />
               <input className="search-box" placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} />
               <button className="toolbar-btn" title="Export CSV" onClick={() => { exportCSV(filtered); addToast(`${filtered.length} customers exported`, "success"); }}>
                 <Download size={12} strokeWidth={2} style={{ marginRight: 4 }} />Export
@@ -2168,7 +2195,7 @@ export default function LeaseTracker() {
                   </div>
                 )}
               </div>
-              <button className="btn-primary" onClick={openModal}><UserPlus size={13} strokeWidth={2} />New Customer</button>
+              <button className="btn-primary" onClick={openModal} title="Add new customer (N)"><UserPlus size={13} strokeWidth={2} />New Customer</button>
             </div>
 
             <div className="stats-bar">
@@ -2181,9 +2208,9 @@ export default function LeaseTracker() {
               ].map(({ value, label, color, filter }) => {
                 const active = statFilter === filter;
                 return (
-                  <div className="stat-item" key={label}
+                  <div className={`stat-item ${active ? "active" : ""}`} key={label}
                     onClick={() => setStatFilter(active ? null : filter)}
-                    style={{ cursor: filter ? "pointer" : "default", opacity: statFilter && !active ? 0.45 : 1, transition: "opacity 0.15s" }}>
+                    style={{ cursor: filter ? "pointer" : "default", opacity: statFilter && !active ? 0.45 : 1, transition: "opacity 0.15s", color: color || "var(--text-primary)" }}>
                     <AnimatedNumber className="stat-value" value={value} style={color ? { color } : {}} />
                     <span className="stat-label" style={active ? { color: color || "var(--text-primary)" } : {}}>{label}</span>
                   </div>
@@ -2307,18 +2334,20 @@ export default function LeaseTracker() {
                       </div>
                     )}
                   </div>
-                  {editMode && (
-                    <button className="detail-edit-btn" onClick={() => setEditMode(false)}>Cancel</button>
-                  )}
-                  <button className={`detail-edit-btn ${editMode ? "active" : ""} ${editSaved ? "saved" : ""}`}
-                    onClick={() => editMode ? saveEdit() : startEdit(c)}
-                    disabled={editSaving}>
-                    {editSaving ? "Saving…" : editSaved ? <><Check size={11} strokeWidth={2.5} /> Saved</> : editMode ? <><Check size={11} strokeWidth={2.5} /> Save</> : <><Pencil size={11} strokeWidth={2} /> Edit</>}
-                  </button>
-                  <button className="detail-edit-btn" title="Print / Export PDF" onClick={() => printCustomer(c, notes)} style={{ gap: 4 }}>
-                    <Printer size={11} strokeWidth={2} /> Print
-                  </button>
-                  <button className="detail-close" onClick={closePanel}><X size={14} strokeWidth={2} /></button>
+                  <div className="detail-topbar-actions">
+                    {editMode && (
+                      <button className="detail-edit-btn" onClick={() => setEditMode(false)}>Cancel</button>
+                    )}
+                    <button className={`detail-edit-btn ${editMode ? "active" : ""} ${editSaved ? "saved" : ""}`}
+                      onClick={() => editMode ? saveEdit() : startEdit(c)}
+                      disabled={editSaving}>
+                      {editSaving ? "Saving…" : editSaved ? <><Check size={11} strokeWidth={2.5} /> Saved</> : editMode ? <><Check size={11} strokeWidth={2.5} /> Save</> : <><Pencil size={11} strokeWidth={2} /> Edit</>}
+                    </button>
+                    <button className="detail-edit-btn" title="Print / Export PDF" onClick={() => printCustomer(c, notes)} style={{ gap: 4 }}>
+                      <Printer size={11} strokeWidth={2} /> Print
+                    </button>
+                    <button className="detail-close" onClick={closePanel}><X size={14} strokeWidth={2} /></button>
+                  </div>
                 </div>
 
                 {/* Status selector */}

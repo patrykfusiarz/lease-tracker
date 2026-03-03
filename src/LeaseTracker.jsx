@@ -1,4 +1,4 @@
-import React, { useReducer, useMemo, useState, useEffect, useRef, useCallback } from "react";
+import { useReducer, useMemo, useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "./auth";
 import { SettingsModal } from "./SettingsModal";
 import { supabase } from "./supabase";
@@ -22,9 +22,6 @@ const COLUMNS = [
 ];
 
 const DATE_KEYS   = new Set(["incentiveExp", "leaseEnd"]);
-
-// Hoisted so it's not rebuilt on every render
-const YEAR_OPTIONS = Array.from({ length: 7 }, (_, i) => String(new Date().getFullYear() + 1 - i));
 
 const STATUSES = [
   { key: "early",         label: "Early",        color: "#5a6a88", order: 0 },
@@ -136,20 +133,9 @@ function parseDMS(raw) {
 }
 
 
-// Module-level cache — keyed by "YYYY-MM-DD:str" so rolling month+day dates
-// (e.g. "Mar 31" that flips to next year at midnight) stay correct across days
-let _parseDateCacheDay = "";
-const _parseDateCache = new Map();
-function _getCacheKey(s) {
-  const today = new Date().toISOString().slice(0, 10);
-  if (today !== _parseDateCacheDay) { _parseDateCache.clear(); _parseDateCacheDay = today; }
-  return s;
-}
 function smartParseDate(str) {
   if (!str || str === "—") return null;
   const s = str.trim();
-  _getCacheKey(s); // validate/clear cache if day changed
-  if (_parseDateCache.has(s)) return _parseDateCache.get(s);
 
   // Month+Day only (e.g. "Mar 31", "March 31") — must check BEFORE native parse
   // because new Date("Mar 31") returns year 2001
@@ -157,9 +143,8 @@ function smartParseDate(str) {
   if (monthDayMatch) {
     const now = new Date();
     let d = new Date(`${monthDayMatch[1]} ${monthDayMatch[2]} ${now.getFullYear()}`);
-    if (isNaN(d)) { _parseDateCache.set(s, null); return null; }
+    if (isNaN(d)) return null;
     if (d < now) d = new Date(`${monthDayMatch[1]} ${monthDayMatch[2]} ${now.getFullYear() + 1}`);
-    _parseDateCache.set(s, d);
     return d;
   }
 
@@ -168,18 +153,13 @@ function smartParseDate(str) {
   if (monthYearMatch) {
     const mo = new Date(`${monthYearMatch[1]} 1 ${monthYearMatch[2]}`).getMonth();
     const yr = parseInt(monthYearMatch[2]);
-    if (!isNaN(mo) && !isNaN(yr)) {
-      const result = new Date(yr, mo + 1, 0);
-      _parseDateCache.set(s, result);
-      return result;
-    }
+    if (!isNaN(mo) && !isNaN(yr)) return new Date(yr, mo + 1, 0);
   }
 
   // Full date — native parse (handles "Apr 15, 2026", "2026-04-15", etc.)
   const d = new Date(s);
-  if (!isNaN(d)) { _parseDateCache.set(s, d); return d; }
+  if (!isNaN(d)) return d;
 
-  _parseDateCache.set(s, null);
   return null;
 }
 
@@ -267,8 +247,6 @@ function calcDaysLeft(dateStr) {
   if (!target) return 0;
   return Math.max(0, Math.ceil((target - new Date()) / 86400000));
 }
-
-// Raw (unclamped) days — negative means already past, used to distinguish "Expired" from "Today"
 function rawDaysLeft(dateStr) {
   const target = smartParseDate(dateStr);
   if (!target) return 0;
@@ -276,10 +254,8 @@ function rawDaysLeft(dateStr) {
 }
 
 function formatTimeLeft(months, days, raw) {
-  if (months < 1) {
-    if (raw !== undefined && raw < 0) return "Expired";
-    return days <= 0 ? "Today" : `${days} ${days === 1 ? "day" : "days"}`;
-  }
+  if (raw !== undefined && raw < 0) return "Expired";
+  if (months < 1) return days <= 0 ? "Today" : `${days} ${days === 1 ? "day" : "days"}`;
   return `${months} ${months === 1 ? "month" : "months"}`;
 }
 
@@ -345,14 +321,8 @@ function calcMileagePace(c) {
 
 // ── NORMALIZERS ───────────────────────────────────────────────────────────────
 
-const MONTH_NAMES  = ["january","february","march","april","may","june","july","august","september","october","november","december"];
-const MONTH_SHORT  = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-const MONTH_FULL   = { Jan:"January",Feb:"February",Mar:"March",Apr:"April",May:"May",Jun:"June",Jul:"July",Aug:"August",Sep:"September",Oct:"October",Nov:"November",Dec:"December" };
-// Expand short month prefix → full name (e.g. "Mar 31" → "March 31")
-function expandMonth(str) {
-  if (!str || str === "—") return "—";
-  return str.replace(/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/i, m => MONTH_FULL[m] || m);
-}
+const MONTH_NAMES = ["january","february","march","april","may","june","july","august","september","october","november","december"];
+const MONTH_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 // "$1,500" | "1500" | "1,500.00" → 1500
 function normalizeCurrency(raw) {
@@ -429,49 +399,29 @@ function buildCustomer(raw) {
   };
 }
 
-// Shared DB field mapper — single source of truth for camelCase ↔ snake_case
-// Used by both insert (handleAdd) and update (saveEdit) to avoid copy-paste drift
-function toDbRow(c) {
-  return {
-    name:              c.name,
-    year:              c.year,
-    model:             c.model === "—" ? null : c.model,
-    trim:              c.trim  === "—" ? null : c.trim,
-    bank:              c.bank  === "—" ? null : c.bank,
-    term:              c.term,
-    miles_yearly:      c.milesYearly,
-    miles_term:        c.milesTerm,
-    current_miles:     c.currentMiles,
-    monthly_payment:   c.monthlyPayment,
-    down_payment:      c.downPayment,
-    trade_equity:      c.tradeEquity,
-    lease_end:         c.leaseEnd === "—" ? null : c.leaseEnd,
-    private_incentive: c.privateIncentive,
-    incentive_exp:     c.incentiveExp === "—" ? null : c.incentiveExp,
-    has_accident:      c.hasAccident || false,
-    status:            c.status,
-  };
-}
-
 
 // ── REDUCER ───────────────────────────────────────────────────────────────────
+
+function loadState() {
+  return { customers: [], notes: {} };
+}
 
 function reducer(state, action) {
   switch (action.type) {
     case "LOAD_CUSTOMERS":  return { ...state, customers: action.customers };
     case "LOAD_NOTES":      return { ...state, notes: action.notes };
-    case "ADD_CUSTOMER":    return { ...state, customers: [...state.customers, action.customer] };
-    case "UPDATE_CUSTOMER": return { ...state, customers: state.customers.map(c => c.id === action.id ? { ...c, ...action.updates } : c) };
+    case "ADD_CUSTOMER":    return { ...state, customers: [...state.customers, { ...action.customer, updatedAt: new Date().toISOString() }] };
+    case "UPDATE_CUSTOMER": return { ...state, customers: state.customers.map(c => c.id === action.id ? { ...c, ...action.updates, updatedAt: new Date().toISOString() } : c) };
     case "DELETE_CUSTOMER": return { ...state, customers: state.customers.filter(c => c.id !== action.id) };
     case "SAVE_NOTE": {
-      const existing = state.notes[action.id] || [];
-      return { ...state, notes: { ...state.notes, [action.id]: [{ text: action.text, savedAt: action.savedAt, id: action.entryId }, ...existing] } };
+      const existing = state.notes[action.id]?.history || [];
+      return { ...state, notes: { ...state.notes, [action.id]: { history: [{ text: action.text, savedAt: action.savedAt, id: action.entryId }, ...existing] } } };
     }
     case "DELETE_NOTE_ENTRY": {
-      const remaining = (state.notes[action.id] || []).filter(e => e.id !== action.entryId);
-      return { ...state, notes: { ...state.notes, [action.id]: remaining } };
+      const filtered = (state.notes[action.id]?.history || []).filter(e => e.id !== action.entryId);
+      return { ...state, notes: { ...state.notes, [action.id]: { history: filtered } } };
     }
-    case "SET_STATUS":      return { ...state, customers: state.customers.map(c => c.id === action.id ? { ...c, status: action.status } : c) };
+    case "SET_STATUS":      return { ...state, customers: state.customers.map(c => c.id === action.id ? { ...c, status: action.status, updatedAt: new Date().toISOString() } : c) };
     default:                return state;
   }
 }
@@ -685,7 +635,7 @@ const css = `
 
   .search-box { background: var(--bg-input); border: 1px solid var(--border-input); border-radius: 6px; padding: 0 10px; height: 28px; font-size: 12px; font-family: 'Inter', sans-serif; color: var(--text-cell); width: 160px; outline: none; transition: border-color 0.2s, width 0.25s cubic-bezier(0.16,1,0.3,1), box-shadow 0.2s; }
   .search-box:focus { border-color: var(--border-input-focus); color: var(--text-primary); width: 240px; }
-  .toolbar-btn { display: flex; align-items: center; gap: 5px; padding: 0 10px; height: 28px; border-radius: 6px; border: 1px solid var(--border-input); background: var(--bg-input); color: var(--text-secondary); font-size: 12px; font-family: 'Inter', sans-serif; cursor: pointer; white-space: nowrap; transition: border-color 0.15s, color 0.15s; }
+  .toolbar-btn { display: inline-flex; align-items: center; padding: 0 10px; height: 28px; font-size: 12px; border: 1px solid var(--border-input); border-radius: 6px; background: transparent; color: var(--text-secondary); cursor: pointer; white-space: nowrap; }
   .toolbar-btn:hover { border-color: var(--border-input-focus); color: var(--text-primary); }
   .app.day .search-box:focus { box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
   .search-box::placeholder { color: var(--text-secondary); }
@@ -735,9 +685,9 @@ const css = `
   .customer-row.row-urgent  { border-left: 2px solid #7aa4e0; padding-left: 12px; }
   .customer-row.row-soon    { border-left: 2px solid #4a6ea8; padding-left: 12px; }
   .customer-row.row-expired { border-left: 2px solid #6b3a3a; padding-left: 12px; opacity: 0.6; }
-  .app.day .customer-row.row-urgent  { border-left-color: #4f46e5; }
-  .app.day .customer-row.row-soon    { border-left-color: #818cf8; }
   .app.day .customer-row.row-expired { border-left-color: #dc2626; }
+  .app.day .customer-row.row-urgent { border-left-color: #4f46e5; }
+  .app.day .customer-row.row-soon   { border-left-color: #818cf8; }
 
   .row-actions { position: absolute; right: 0; top: 50%; transform: translateY(-50%); display: flex; align-items: center; gap: 4px; opacity: 0; pointer-events: none; transition: opacity 0.12s; z-index: 5; }
   .row-action-btn { display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 5px; border: 1px solid var(--border-input); background: var(--bg-panel); cursor: pointer; color: var(--text-secondary); transition: all 0.1s; }
@@ -1113,7 +1063,7 @@ const css = `
 `;
 
 // ── Animated Number ───────────────────────────────────────────────────────────
-const AnimatedNumber = React.memo(function AnimatedNumber({ value, style, className }) {
+function AnimatedNumber({ value, style, className }) {
   const [display, setDisplay] = useState(value);
   const [animating, setAnimating] = useState(false);
   const prev = useRef(value);
@@ -1135,7 +1085,7 @@ const AnimatedNumber = React.memo(function AnimatedNumber({ value, style, classN
     return () => clearInterval(timer);
   }, [value]);
   return <span className={className} style={{ ...style, transition: animating ? "none" : undefined }}>{display}</span>;
-});
+}
 
 function incentiveColor(amount, dayMode) {
   if (!amount || amount === 0) return undefined;
@@ -1156,29 +1106,10 @@ function formatDollar(val) {
   return n.toLocaleString();
 }
 
-// ── DEBOUNCE HOOK — delays state updates until typing pauses ─────────────────
-function useDebounce(value, delay) {
-  const [debounced, setDebounced] = useState(value);
-  useEffect(() => {
-    const t = setTimeout(() => setDebounced(value), delay);
-    return () => clearTimeout(t);
-  }, [value, delay]);
-  return debounced;
-}
+// ── COMPONENT ─────────────────────────────────────────────────────────────────
 
-// ── DETAIL PANEL STATIC DATA — hoisted to avoid rebuild on every render ──────
-const DOLLAR_KEYS = new Set(["monthlyPayment","downPayment","tradeEquity","privateIncentive"]);
-const SELECT_OPTS = {
-  bank:             ["VW Credit","Ally","Affinity","Cal"],
-  term:             ["24","36","39","42","48"],
-  year:             YEAR_OPTIONS,
-  model:            ["Atlas","Taos","Jetta","Tiguan","GLI","Cross Sport","GTI","Golf R"],
-  trim:             ["S","SE","SE Black","SEL","SE Tech","SEL Premium R-Line","SEL Premium R-Line Turbo"],
-  privateIncentive: ["750","1000","1250","1500","1750","2000","2250","2500"],
-  milesYearly:      ["7,500","10,000","12,000","15,000","20,000"],
-};
 
-// ── CSV EXPORT ────────────────────────────────────────────────────────────────
+// ── Toast system ──────────────────────────────────────────────────────────────
 function exportCSV(rows) {
   const headers = ["Name","Year","Model","Trim","Bank","Term","Lease End","Mo. Left","Status",
     "Monthly Payment","Down Payment","Trade Equity","Incentive","Incentive Exp",
@@ -1217,10 +1148,6 @@ function exportCSV(rows) {
   URL.revokeObjectURL(url);
 }
 
-// ── COMPONENT ─────────────────────────────────────────────────────────────────
-
-
-// ── Toast system ──────────────────────────────────────────────────────────────
 function useToast() {
   const [toasts, setToasts] = useState([]);
 
@@ -1282,7 +1209,8 @@ function printCustomer(c, notes) {
       : `On pace to exceed by ~${mp.overage.toLocaleString()} mi`
     : '—';
 
-
+  const FULL_MONTHS = { Jan:'January', Feb:'February', Mar:'March', Apr:'April', May:'May', Jun:'June', Jul:'July', Aug:'August', Sep:'September', Oct:'October', Nov:'November', Dec:'December' };
+  const fmtMonth = (str) => str && str !== '—' ? str.replace(/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/i, m => FULL_MONTHS[m] || m) : '—';
 
   const now = new Date();
   const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
@@ -1302,7 +1230,7 @@ function printCustomer(c, notes) {
     ['Down Payment',      fmt$(c.downPayment)],
     ['Trade Equity',      c.tradeEquity > 0 ? fmt$(c.tradeEquity) : '$0'],
     ['Incentive Value',   fmt$(c.privateIncentive)],
-    ['Incentive Expires', expandMonth(c.incentiveExp)],
+    ['Incentive Expires', fmtMonth(c.incentiveExp)],
     ['Miles / Year',      fmtMi(c.milesYearly)],
     ['Miles / Term',      fmtMi(c.milesTerm)],
     ['Odometer',          c.currentMiles > 0 ? Number(c.currentMiles).toLocaleString() + ' mi' : '—'],
@@ -1405,7 +1333,7 @@ function printCustomer(c, notes) {
 const TIMELINE_MONTHS = 12;
 const IDEAL_COL = 220;
 
-const TimelineView = React.memo(function TimelineView({ customers, isDayMode, openPanel, openModal }) {
+function TimelineView({ customers, isDayMode, openPanel, openModal }) {
   const now = useRef(new Date()).current;
   const [tlSearch, setTlSearch] = useState('');
   const containerRef = useRef(null);
@@ -1451,11 +1379,10 @@ const TimelineView = React.memo(function TimelineView({ customers, isDayMode, op
     return ((now - ms) / (me - ms)) * 100;
   }, []);
 
-  const debouncedTlSearch = useDebounce(tlSearch, 150);
   const buckets = useMemo(() => {
     const map = new Map();
     months.forEach(m => map.set(`${m.getFullYear()}-${m.getMonth()}`, []));
-    const q = debouncedTlSearch.toLowerCase();
+    const q = tlSearch.toLowerCase();
     customers.forEach(c => {
       const end = smartParseDate(c.leaseEnd);
       if (!end) return;
@@ -1469,7 +1396,7 @@ const TimelineView = React.memo(function TimelineView({ customers, isDayMode, op
     });
     map.forEach(arr => arr.sort((a, b) => parseDateVal(a.leaseEnd) - parseDateVal(b.leaseEnd)));
     return map;
-  }, [customers, months, debouncedTlSearch]);
+  }, [customers, months, tlSearch]);
 
   const total = useMemo(() => { let n = 0; buckets.forEach(a => n += a.length); return n; }, [buckets]);
 
@@ -1597,7 +1524,7 @@ const TimelineView = React.memo(function TimelineView({ customers, isDayMode, op
       </div>
     </div>
   );
-});
+}
 
 
 export default function LeaseTracker() {
@@ -1605,7 +1532,7 @@ export default function LeaseTracker() {
   const { toasts, addToast } = useToast();
   const [showSettings, setShowSettings] = useState(false);
   const [activeView, setActiveView] = useState("maturities"); // "maturities" | "timeline"
-  const [state,   dispatch] = useReducer(reducer, { customers: [], notes: {} });
+  const [state,   dispatch] = useReducer(reducer, null, loadState);
   const { customers, notes } = state;
   const [dbLoading, setDbLoading] = useState(true);
   const hasLoaded = useRef(false);
@@ -1619,9 +1546,6 @@ export default function LeaseTracker() {
   const [editForm,  setEditForm]  = useState({});
   const [editSaved,   setEditSaved]   = useState(false);
   const [editSaving,  setEditSaving]  = useState(false);
-  const [addSaving,   setAddSaving]   = useState(false);
-  const [noteSaving,  setNoteSaving]  = useState(false);
-  const [confirmDiscard, setConfirmDiscard] = useState(null); // {action: fn} pending after discard
 
   // Notes — simple: show empty state or textarea
   const [noteDraft, setNoteDraft] = useState("");
@@ -1630,8 +1554,6 @@ export default function LeaseTracker() {
   const notesRef = useRef(null);
 
   const [search,    setSearch]    = useState("");
-
-  // Parse lt-prefs once — avoids 4 separate JSON.parse calls on mount
   const [sortKey,   setSortKey]   = useState(() => { try { return JSON.parse(localStorage.getItem("lt-prefs") || "{}").sortKey || "leaseEnd"; } catch { return "leaseEnd"; } });
   const [sortDir,   setSortDir]   = useState(() => { try { return JSON.parse(localStorage.getItem("lt-prefs") || "{}").sortDir || "asc"; } catch { return "asc"; } });
 
@@ -1642,6 +1564,7 @@ export default function LeaseTracker() {
   const [importError, setImportError] = useState("");
 
   const [confirmDel, setConfirmDel] = useState(null);
+  const [confirmDiscard, setConfirmDiscard] = useState(null);
   const [isDayMode,  setIsDayMode]  = useState(() => {
     try { const saved = localStorage.getItem('lt_theme'); return saved !== null ? saved === 'day' : true; } catch { return true; }
   });
@@ -1653,14 +1576,6 @@ export default function LeaseTracker() {
   const [densityOpen, setDensityOpen] = useState(false);
   const densityRef = useRef(null);
   const [statFilter, setStatFilter]  = useState(() => { try { return JSON.parse(localStorage.getItem("lt-prefs") || "{}").statFilter || null; } catch { return null; } });
-
-  // Shared helper — merges updates into lt-prefs without a full re-parse each call
-  const savePrefs = useCallback((updates) => {
-    try {
-      const current = JSON.parse(localStorage.getItem("lt-prefs") || "{}");
-      localStorage.setItem("lt-prefs", JSON.stringify({ ...current, ...updates }));
-    } catch {}
-  }, []);
 
   const toggleTheme = useCallback(() => {
     setThemeAnimating(true);
@@ -1680,16 +1595,7 @@ export default function LeaseTracker() {
   }, [densityOpen]);
 
   const closeTimer   = useRef(null);
-
-  // ── Inject app CSS once into <head> — avoids React diffing a 600-line string every render ──
-  useEffect(() => {
-    const id = "meridian-app-css";
-    if (document.getElementById(id)) return;
-    const el = document.createElement("style");
-    el.id = id;
-    el.textContent = css;
-    document.head.appendChild(el);
-  }, []);
+  const persistTimer = useRef(null);
 
   // ── Load from Supabase on mount ──
   useEffect(() => {
@@ -1698,24 +1604,19 @@ export default function LeaseTracker() {
     hasLoaded.current = true;
     async function loadFromSupabase() {
       setDbLoading(true);
-      let custData = null, notesData = null;
-      try {
-        // Fire both queries in parallel — cuts initial load time roughly in half
-        const [custRes, notesRes] = await Promise.all([
-          supabase.from("customers").select("*").eq("user_id", user.id).order("created_at", { ascending: true }),
-          supabase.from("notes").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
-        ]);
-        if (custRes.error)  throw custRes.error;
-        if (notesRes.error) throw notesRes.error;
-        custData  = custRes.data;
-        notesData = notesRes.data;
-      } catch (err) {
-        console.error("Failed to load data:", err);
-        addToast("Could not load your data", "error", "Check your connection and refresh");
-        setDbLoading(false);
-        hasLoaded.current = false; // allow retry on next render
-        return;
-      }
+      // Load customers
+      const { data: custData } = await supabase
+        .from("customers")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: true });
+
+      // Load notes
+      const { data: notesData } = await supabase
+        .from("notes")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
 
       if (custData) {
         // Convert snake_case DB fields to camelCase app fields
@@ -1738,6 +1639,7 @@ export default function LeaseTracker() {
           incentiveExp:     c.incentive_exp || "—",
           status:           c.status || "early",
           hasAccident:      c.has_accident || false,
+          updatedAt:        c.updated_at,
         }));
         dispatch({ type: "LOAD_CUSTOMERS", customers: mapped });
       }
@@ -1749,7 +1651,11 @@ export default function LeaseTracker() {
           if (!grouped[n.customer_id]) grouped[n.customer_id] = [];
           grouped[n.customer_id].push({ id: n.id, text: n.text, savedAt: n.saved_at });
         });
-        dispatch({ type: "LOAD_NOTES", notes: grouped });
+        const notesMap = {};
+        Object.entries(grouped).forEach(([custId, entries]) => {
+          notesMap[custId] = { history: entries };
+        });
+        dispatch({ type: "LOAD_NOTES", notes: notesMap });
       }
 
       setDbLoading(false);
@@ -1761,53 +1667,49 @@ export default function LeaseTracker() {
 
   useEffect(() => {
     if (panelState === "open" && selected) {
-      const c = customersById.get(selected);
+      const c = customers.find(x => x.id === selected);
       if (c) setSnapCustomer(c);
     }
-  }, [customers, selected, panelState, customersById]);
+  }, [customers, selected, panelState]);
 
   // ── Panel ──
 
-  // O(1) customer lookup — replaces repeated customers.find() scans
-  // Must be defined before openPanel which depends on it
-  const customersById = useMemo(() => new Map(customers.map(c => [c.id, c])), [customers]);
-
   const openPanel = useCallback((id, enterEdit = false) => {
-  const c = customersById.get(id);
-  if (!c) return;
-  clearTimeout(closeTimer.current);
-  setSelected(id);
-  setSnapCustomer(c);
-  setNoteDraft("");
-  setNotesOpen(false);
-  setEditSaved(false);
-  if (enterEdit) {
-    setEditForm({
-      name:             c.name,
-      year:             String(c.year),
-      model:            c.model === "—" ? "" : c.model,
-      trim:             (!c.trim  || c.trim  === "—") ? "" : c.trim,
-      bank:             (!c.bank  || c.bank  === "—") ? "" : c.bank,
-      term:             c.term  ? String(c.term)  : "",
-      milesYearly:      c.milesYearly  ? Number(c.milesYearly).toLocaleString() : "",
-      milesTerm:        c.milesTerm    ? Number(c.milesTerm).toLocaleString() : "",
-      currentMiles:     String(c.currentMiles),
-      monthlyPayment:   c.monthlyPayment ? String(c.monthlyPayment) : "",
-      downPayment:      c.downPayment   ? String(c.downPayment)   : "",
-      tradeEquity:      c.tradeEquity   ? String(c.tradeEquity)   : "",
-      leaseEnd:         c.leaseEnd === "—" ? "" : c.leaseEnd,
-      privateIncentive: c.privateIncentive > 0 ? String(c.privateIncentive) : "",
-      incentiveExp:     c.incentiveExp === "—" ? "" : c.incentiveExp,
-    });
-    setEditMode(true);
-  } else {
-    setEditMode(false);
-  }
-  setPanelState("open");
-  }, [customers, customersById]);
+    const c = customers.find(x => x.id === id);
+    if (!c) return;
+    clearTimeout(closeTimer.current);
+    setSelected(id);
+    setSnapCustomer(c);
+    setNoteDraft("");
+    setNotesOpen(false);
+    setEditSaved(false);
+    if (enterEdit) {
+      setEditForm({
+        name:             c.name,
+        year:             String(c.year),
+        model:            c.model === "—" ? "" : c.model,
+        trim:             (!c.trim  || c.trim  === "—") ? "" : c.trim,
+        bank:             (!c.bank  || c.bank  === "—") ? "" : c.bank,
+        term:             c.term  ? String(c.term)  : "",
+        milesYearly:      c.milesYearly  ? Number(c.milesYearly).toLocaleString() : "",
+        milesTerm:        c.milesTerm    ? Number(c.milesTerm).toLocaleString() : "",
+        currentMiles:     String(c.currentMiles),
+        monthlyPayment:   c.monthlyPayment ? String(c.monthlyPayment) : "",
+        downPayment:      c.downPayment   ? String(c.downPayment)   : "",
+        tradeEquity:      c.tradeEquity   ? String(c.tradeEquity)   : "",
+        leaseEnd:         c.leaseEnd === "—" ? "" : c.leaseEnd,
+        privateIncentive: c.privateIncentive > 0 ? String(c.privateIncentive) : "",
+        incentiveExp:     c.incentiveExp === "—" ? "" : c.incentiveExp,
+      });
+      setEditMode(true);
+    } else {
+      setEditMode(false);
+    }
+    setPanelState("open");
+  }, [customers]);
 
-  // Returns true if editForm differs from the saved customer data
-  const hasUnsavedEdits = useCallback(() => {
+  // Returns true if editForm differs from the saved customer snapshot
+  function hasUnsavedEdits() {
     if (!editMode || !snapCustomer) return false;
     const fields = ["name","year","model","trim","bank","term","milesYearly","milesTerm",
       "currentMiles","monthlyPayment","downPayment","tradeEquity","leaseEnd","privateIncentive","incentiveExp"];
@@ -1816,9 +1718,23 @@ export default function LeaseTracker() {
       const custVal = String(snapCustomer[k] ?? "").trim().replace(/,/g,"");
       return formVal !== custVal;
     });
-  }, [editMode, editForm, snapCustomer]);
+  }
 
-  const closePanelImmediate = useCallback(() => {
+  const closePanel = useCallback(() => {
+    if (hasUnsavedEdits()) {
+      setConfirmDiscard({ action: () => {
+        clearTimeout(closeTimer.current);
+        setEditMode(false);
+        setPanelState("closing");
+        closeTimer.current = setTimeout(() => {
+          setPanelState("closed");
+          setSelected(null);
+          setNoteDraft("");
+          setNotesOpen(false);
+        }, 200);
+      }});
+      return;
+    }
     clearTimeout(closeTimer.current);
     setEditMode(false);
     setPanelState("closing");
@@ -1828,24 +1744,16 @@ export default function LeaseTracker() {
       setNoteDraft("");
       setNotesOpen(false);
     }, 200);
-  }, []);
-
-  const closePanel = useCallback(() => {
-    if (hasUnsavedEdits()) {
-      setConfirmDiscard({ action: () => closePanelImmediate() });
-    } else {
-      closePanelImmediate();
-    }
-  }, [hasUnsavedEdits, closePanelImmediate]);
+  }, [editMode, editForm, snapCustomer, confirmDiscard]);
 
   const handleRowClick = useCallback((id) => {
     if (id === selected && panelState === "open") return;
     if (hasUnsavedEdits()) {
       setConfirmDiscard({ action: () => openPanel(id) });
-    } else {
-      openPanel(id);
+      return;
     }
-  }, [selected, panelState, openPanel, hasUnsavedEdits]);
+    openPanel(id);
+  }, [selected, panelState, openPanel, editMode, editForm, snapCustomer]);
 
   // ── Notes ──
   // useEffect runs after DOM commit so ref is guaranteed populated when notesOpen flips true
@@ -1860,26 +1768,24 @@ export default function LeaseTracker() {
   }, []);
 
   const saveNote = useCallback(async () => {
-    if (!selected || !noteDraft.trim() || noteSaving) return;
-    setNoteSaving(true);
+    if (!selected || !noteDraft.trim()) return;
     const now = new Date();
     const savedAt = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) + " · " + now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
     const entryId = uid();
-    const { error } = await supabase.from("notes").insert({
+    // Write to Supabase
+    await supabase.from("notes").insert({
       id:          entryId,
       customer_id: selected,
       user_id:     user.id,
       text:        noteDraft.trim(),
       saved_at:    savedAt,
     });
-    setNoteSaving(false);
-    if (error) { addToast("Note Failed", "error", "Could not save note"); return; }
     dispatch({ type: "SAVE_NOTE", id: selected, text: noteDraft.trim(), savedAt, entryId });
     setNoteDraft("");
     setNoteSaved(true);
     addToast(snapCustomer?.name || "Customer", "success", "Note Added");
     setTimeout(() => setNoteSaved(false), 2000);
-  }, [selected, noteDraft, noteSaving, user, addToast, snapCustomer]);
+  }, [selected, noteDraft, user, addToast, snapCustomer]);
 
   // ── Edit ──
 
@@ -1905,7 +1811,6 @@ export default function LeaseTracker() {
     setEditMode(true);
   }, []);
 
-
   const saveEdit = useCallback(async () => {
     if (!selected || editSaving) return;
     setEditSaving(true);
@@ -1930,7 +1835,24 @@ export default function LeaseTracker() {
       incentiveExp,
       hasAccident:         editForm.hasAccident || false,
     };
-    const { error } = await supabase.from("customers").update(toDbRow(updates)).eq("id", selected);
+    const { error } = await supabase.from("customers").update({
+      name:              updates.name,
+      year:              updates.year,
+      model:             updates.model === "—" ? null : updates.model,
+      trim:              updates.trim  === "—" ? null : updates.trim,
+      bank:              updates.bank  === "—" ? null : updates.bank,
+      term:              updates.term,
+      miles_yearly:      updates.milesYearly,
+      miles_term:        updates.milesTerm,
+      current_miles:     updates.currentMiles,
+      monthly_payment:   updates.monthlyPayment,
+      down_payment:      updates.downPayment,
+      trade_equity:      updates.tradeEquity,
+      lease_end:         updates.leaseEnd === "—" ? null : updates.leaseEnd,
+      private_incentive: updates.privateIncentive,
+      incentive_exp:     updates.incentiveExp === "—" ? null : updates.incentiveExp,
+      has_accident:      updates.hasAccident,
+    }).eq("id", selected);
     setEditSaving(false);
     if (error) { console.error("Supabase save error:", JSON.stringify(error)); addToast("Save Failed", "error", error.message || "Please try again"); return; }
     // Build a human-readable summary of what changed
@@ -1962,13 +1884,13 @@ export default function LeaseTracker() {
 
   // ── Add modal ──
 
-  const closeModal = useCallback(() => { setShowModal(false); setForm(EMPTY_FORM); setModalTab("pick"); setImportText(""); setImportError(""); }, []);
-  const openModal  = useCallback(() => { setForm(EMPTY_FORM); setShowModal(true); setModalTab("pick"); setImportText(""); setImportError(""); }, []);
+  const openModal  = () => { setForm(EMPTY_FORM); setShowModal(true); setModalTab("pick"); setImportText(""); setImportError(""); };
+  const closeModal = () => { setShowModal(false); setForm(EMPTY_FORM); setModalTab("pick"); setImportText(""); setImportError(""); };
 
   const isDuplicate = useMemo(() => {
-    if (!showModal || !form.name.trim()) return false;
+    if (!form.name.trim()) return false;
     return customers.some(c => c.name.trim().toLowerCase() === form.name.trim().toLowerCase());
-  }, [showModal, form.name, customers]);
+  }, [form.name, customers]);
 
   const handleParse = () => {
     setImportError("");
@@ -2002,81 +1924,85 @@ export default function LeaseTracker() {
   };
 
   const handleAdd = async () => {
-    if (addSaving) return; // guard against double-submit
-    setAddSaving(true);
     const customer = buildCustomer(form);
-    const { error } = await supabase.from("customers").insert({ id: customer.id, user_id: user.id, ...toDbRow(customer) });
-    setAddSaving(false);
-    if (error) { addToast("Add Failed", "error", error.message || "Please try again"); return; }
-    dispatch({ type: "ADD_CUSTOMER", customer });
-    closeModal();
-    setSelected(customer.id);
-    setSnapCustomer(customer);
-    setNoteDraft("");
-    setNotesOpen(false);
-    setEditMode(false);
-    setEditSaved(false);
-    setPanelState("open");
-    addToast(customer.name, "success", "Added");
+    // Write to Supabase
+    const { error } = await supabase.from("customers").insert({
+      id:               customer.id,
+      user_id:          user.id,
+      name:             customer.name,
+      year:             customer.year,
+      model:            customer.model === "—" ? null : customer.model,
+      trim:             customer.trim  === "—" ? null : customer.trim,
+      bank:             customer.bank  === "—" ? null : customer.bank,
+      term:             customer.term,
+      miles_yearly:     customer.milesYearly,
+      miles_term:       customer.milesTerm,
+      current_miles:    customer.currentMiles,
+      monthly_payment:  customer.monthlyPayment,
+      down_payment:     customer.downPayment,
+      trade_equity:     customer.tradeEquity,
+      lease_end:        customer.leaseEnd === "—" ? null : customer.leaseEnd,
+      private_incentive: customer.privateIncentive,
+      incentive_exp:    customer.incentiveExp === "—" ? null : customer.incentiveExp,
+      has_accident:     form.hasAccident || false,
+      status:           customer.status,
+    });
+    if (!error) {
+      dispatch({ type: "ADD_CUSTOMER", customer });
+      closeModal();
+      setSelected(customer.id);
+      setSnapCustomer(customer);
+      setNoteDraft("");
+      setNotesOpen(false);
+      setEditMode(false);
+      setEditSaved(false);
+      setPanelState("open");
+      addToast(customer.name, "success", "Added");
+    }
   };
 
   // ── Delete ──
 
+  const confirmDelete = (id, e) => { e.stopPropagation(); setConfirmDel(id); };
   const executeDelete = async () => {
-    const delName = customersById.get(confirmDel)?.name || "Customer";
-    const { error } = await supabase.from("customers").delete().eq("id", confirmDel);
-    if (error) { addToast("Delete Failed", "error", "Could not delete customer"); return; }
+    const delName = customers.find(x => x.id === confirmDel)?.name || "Customer";
     if (confirmDel === selected) closePanel();
+    await supabase.from("customers").delete().eq("id", confirmDel);
     dispatch({ type: "DELETE_CUSTOMER", id: confirmDel });
     setConfirmDel(null);
     addToast(delName, "info", "Deleted");
   };
-  const confirmDelete = (id, e) => { e.stopPropagation(); setConfirmDel(id); };
 
   // ── Sort ──
 
   const handleSort = (key) => {
-    if (sortKey === key) {
-      const next = sortDir === "asc" ? "desc" : "asc";
-      setSortDir(next);
-      savePrefs({ sortKey: key, sortDir: next });
-    } else {
-      setSortKey(key);
-      setSortDir("asc");
-      savePrefs({ sortKey: key, sortDir: "asc" });
-    }
+    if (sortKey === key) setSortDir(d => d === "asc" ? "desc" : "asc");
+    else { setSortKey(key); setSortDir("asc"); }
   };
 
   // ── Derived ──
 
-  const debouncedSearch = useDebounce(search, 150);
   const { filtered, urgentCount, soonCount, withIncentive, milesAtRisk } = useMemo(() => {
-    const q = debouncedSearch.toLowerCase();
+    const q = search.toLowerCase();
     let urgent = 0, soon = 0, incentive = 0, miles = 0;
-
-    // Single pass: compute stats and pre-cache ml/dl/mp per customer to avoid
-    // redundant calls in the filter step below
-    const cache = new Map();
     customers.forEach(c => {
       const ml = calcMonthsLeft(c.leaseEnd);
       const dl = calcDaysLeft(c.leaseEnd);
-      const mp = calcMileagePace(c);
-      cache.set(c.id, { ml, dl, mp });
       if (ml === 0 && dl > 0) urgent++;
       else if (ml >= 1 && ml <= 3) soon++;
       if (c.privateIncentive > 0) incentive++;
+      const mp = calcMileagePace(c);
       if (mp && (mp.status === "over" || mp.status === "warning")) miles++;
     });
-
     const all = customers
       .filter(c => {
         const sLabel = STATUS_MAP.get(c.status)?.label?.toLowerCase() || "";
-        const searchable = [c.name, c.model, c.bank, c.trim, sLabel].join(" ").toLowerCase();
+        const searchable = [c.name, c.model, c.bank, c.trim, c.vin, sLabel].join(" ").toLowerCase();
         if (q && !searchable.includes(q)) return false;
-        if (statFilter === 'urgent')    { const { ml, dl } = cache.get(c.id); return ml === 0 && dl > 0; }
-        if (statFilter === 'soon')      { const { ml }     = cache.get(c.id); return ml >= 1 && ml <= 3; }
+        if (statFilter === 'urgent')    return calcMonthsLeft(c.leaseEnd) === 0 && calcDaysLeft(c.leaseEnd) > 0;
+        if (statFilter === 'soon')      return calcMonthsLeft(c.leaseEnd) >= 1 && calcMonthsLeft(c.leaseEnd) <= 3;
         if (statFilter === 'incentive') return c.privateIncentive > 0;
-        if (statFilter === 'miles')     { const { mp }     = cache.get(c.id); return mp && (mp.status === 'over' || mp.status === 'warning'); }
+        if (statFilter === 'miles') { const mp = calcMileagePace(c); return mp && (mp.status === 'over' || mp.status === 'warning'); }
         return true;
       })
       .sort((a, b) => {
@@ -2095,38 +2021,33 @@ export default function LeaseTracker() {
         return sortDir === "asc" ? cmp : -cmp;
       });
     return { filtered: all, urgentCount: urgent, soonCount: soon, withIncentive: incentive, milesAtRisk: miles };
-  }, [customers, debouncedSearch, sortKey, sortDir, statFilter]);
+  }, [customers, search, sortKey, sortDir, statFilter]);
 
   const panelVisible = panelState !== "closed";
   const c = snapCustomer;
 
-  // ── Keyboard navigation — stable handler via refs, registers exactly once ──
-  const kbStateRef = useRef({});
-  useEffect(() => {
-    kbStateRef.current = { filtered, selected, panelState, editMode, showModal, confirmDel, statFilter, snapCustomer, openNotes };
-  });
-
+  // ── Keyboard navigation ──
   useEffect(() => {
     const handler = (e) => {
+      // Don't intercept when typing in inputs/textareas
       const tag = document.activeElement?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
-      const { filtered, selected, panelState, editMode, showModal, confirmDel, statFilter, snapCustomer, openNotes } = kbStateRef.current;
 
       if (e.key === "Escape") {
-        if (editMode)              { setEditMode(false); return; }
-        if (panelState === "open") { closePanel(); return; }  // closePanel handles unsaved check
-        if (showModal)             { setShowModal(false); return; }
-        if (confirmDel)            { setConfirmDel(null); return; }
-        if (statFilter)            { setStatFilter(null); return; }
+        if (editMode)       { setEditMode(false); return; }
+        if (panelState === "open") { closePanel(); return; }
+        if (showModal)      { setShowModal(false); return; }
+        if (confirmDel)     { setConfirmDel(null); return; }
+        if (statFilter)     { setStatFilter(null); return; }
       }
 
       if (e.key === "ArrowDown" || e.key === "ArrowUp") {
         e.preventDefault();
-        if (!filtered.length) return;
+        if (filtered.length === 0) return;
         const idx = filtered.findIndex(r => r.id === selected);
-        const next = e.key === "ArrowDown"
-          ? (idx === -1 ? 0 : Math.min(idx + 1, filtered.length - 1))
-          : (idx === -1 ? filtered.length - 1 : Math.max(idx - 1, 0));
+        let next;
+        if (e.key === "ArrowDown") next = idx === -1 ? 0 : Math.min(idx + 1, filtered.length - 1);
+        else                       next = idx === -1 ? filtered.length - 1 : Math.max(idx - 1, 0);
         openPanel(filtered[next].id);
       }
 
@@ -2134,11 +2055,11 @@ export default function LeaseTracker() {
         startEdit(snapCustomer);
       }
 
-      if (e.key === "n" && !e.metaKey && !e.ctrlKey) {
+      if (e.key === "n" && !e.metaKey && !e.ctrlKey && !showModal) {
         if (panelState === "open") {
-          // n inside panel → focus note textarea
-          openNotes();
-        } else if (!showModal) {
+          setNotesOpen(true);
+          setTimeout(() => notesRef.current?.focus(), 50);
+        } else {
           setShowModal(true);
           setModalTab("pick");
         }
@@ -2146,7 +2067,7 @@ export default function LeaseTracker() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [openPanel, closePanel, startEdit]); // stable — only 3 useCallback deps
+  }, [filtered, selected, panelState, editMode, showModal, confirmDel, statFilter, snapCustomer, openPanel, closePanel, startEdit]);
 
   // ── Render ──
 
@@ -2159,6 +2080,7 @@ export default function LeaseTracker() {
 
   return (
     <>
+      <style>{css}</style>
       <div className={`app${isDayMode ? " day" : ""}${isWindows ? " win" : ""}`}>
 
         {/* SIDEBAR */}
@@ -2227,8 +2149,8 @@ export default function LeaseTracker() {
               <span className="topbar-title">Maturities</span>
               <div className="spacer" />
               <input className="search-box" placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} />
-              <button className="toolbar-btn" title="Export filtered view to CSV" onClick={() => { exportCSV(filtered); addToast(`${filtered.length} customer${filtered.length === 1 ? "" : "s"} exported`, "success", "CSV downloaded"); }}>
-                <Download size={12} strokeWidth={2} /> Export
+              <button className="toolbar-btn" title="Export CSV" onClick={() => { exportCSV(filtered); addToast(`${filtered.length} customers exported`, "success"); }}>
+                <Download size={12} strokeWidth={2} style={{ marginRight: 4 }} />Export
               </button>
               <div style={{ position: "relative" }} ref={densityRef}>
                 <button className="density-btn" onClick={() => setDensityOpen(v => !v)}>
@@ -2238,7 +2160,7 @@ export default function LeaseTracker() {
                 {densityOpen && (
                   <div className="density-menu">
                     {["compact","comfortable"].map(d => (
-                      <div key={d} className={`density-option ${density === d ? "active" : ""}`} onClick={() => { setDensity(d); setDensityOpen(false); savePrefs({ density: d }); }}>
+                      <div key={d} className={`density-option ${density === d ? "active" : ""}`} onClick={() => { setDensity(d); setDensityOpen(false); try { const p = JSON.parse(localStorage.getItem("lt-prefs") || "{}"); localStorage.setItem("lt-prefs", JSON.stringify({ ...p, density: d })); } catch {} }}>
                         {d.charAt(0).toUpperCase() + d.slice(1)}
                         {density === d && <Check size={11} strokeWidth={2.5} />}
                       </div>
@@ -2302,24 +2224,24 @@ export default function LeaseTracker() {
                 const mc     = monthsColor(monthsLeft, isDayMode);
                 const imc    = monthsColor(incentiveMonthsLeft, isDayMode);
                 const lDays  = monthsLeft === 0 ? calcDaysLeft(row.leaseEnd) : 0;
-                const lRaw   = monthsLeft === 0 ? rawDaysLeft(row.leaseEnd) : 1;
                 const iDays  = incentiveMonthsLeft === 0 ? calcDaysLeft(row.incentiveExp) : 0;
+                const lRaw   = rawDaysLeft(row.leaseEnd);
                 const lLabel = formatTimeLeft(monthsLeft, lDays, lRaw);
                 const iLabel = formatTimeLeft(incentiveMonthsLeft, iDays);
-                const isExpired = lRaw < 0;
-                const urgent = monthsLeft === 0 && !isExpired;
+                const urgent  = monthsLeft === 0 && lRaw >= 0;
+                const expired = lRaw < 0;
                 const rowMp  = calcMileagePace(row); // compute once per row
 
                 return (
                   <div
                     key={row.id}
-                    className={`customer-row ${selected === row.id ? "selected" : ""} ${isExpired ? "row-expired" : urgent ? "row-urgent" : monthsLeft <= 3 ? "row-soon" : ""}`}
+                    className={`customer-row ${selected === row.id ? "selected" : ""} ${expired ? "row-expired" : urgent ? "row-urgent" : ""}`}
                     onClick={() => handleRowClick(row.id)}
                   >
                     <span className="cell-name">
                       <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.name}</span>
-                      {(notes[row.id]?.length ?? 0) > 0 && (
-                        <span className="notes-count-badge">{notes[row.id].length}</span>
+                      {notes[row.id]?.history?.length > 0 && (
+                        <span className="notes-count-badge">{notes[row.id].history.length}</span>
                       )}
                     </span>
                     <span className="cell-year">{row.year}</span>
@@ -2329,7 +2251,7 @@ export default function LeaseTracker() {
                     </span>
                     <span className="cell-incentive-exp" style={{ opacity: row.privateIncentive === 0 ? 0.25 : 1 }}>{row.incentiveExp}</span>
                     <span className="months-badge" style={{ opacity: row.privateIncentive === 0 ? 0.25 : 1, color: (incentiveMonthsLeft > 0 || iDays > 0) && row.incentiveExp !== "—" ? imc : (isDayMode ? "#8090a8" : "#364050") }}>
-                      {(() => { const show = row.privateIncentive > 0 && iDays > 0 && iDays <= 30; return <span className="incentive-warn-dot" title={show ? `Expires in ${iDays} days` : ""} style={{ visibility: show ? "visible" : "hidden" }} />; })()}
+                      {(() => { const d = row.privateIncentive > 0 && row.incentiveExp !== "—" ? calcDaysLeft(row.incentiveExp) : null; const show = d !== null && d <= 30 && d > 0; return <span className="incentive-warn-dot" title={show ? `Expires in ${d} days` : ""} style={{ visibility: show ? "visible" : "hidden" }} />; })()}
                       {row.incentiveExp !== "—" && (incentiveMonthsLeft > 0 || iDays > 0) ? iLabel : "—"}
                     </span>
                     <span className="cell-lease-end">{row.leaseEnd}</span>
@@ -2412,6 +2334,7 @@ export default function LeaseTracker() {
                           style={active ? { background: s.color, borderColor: s.color } : {}}
                           onClick={async () => {
                           if (active) return; // already this status
+                          const prevLabel = statusMeta(c.status || "early").label;
                           const { error: sErr } = await supabase.from("customers").update({ status: s.key }).eq("id", selected);
                           if (sErr) { addToast("Update Failed", "error", "Status could not be changed"); return; }
                           dispatch({ type: "SET_STATUS", id: selected, status: s.key });
@@ -2435,8 +2358,18 @@ export default function LeaseTracker() {
                   })();
                   const fmt$    = (n) => n > 0 ? `$${Number(n).toLocaleString()}` : "—";
                   const fmtMi   = (n) => n > 0 ? Number(n).toLocaleString() : "—";
+                  const dollarKeys = ["monthlyPayment","downPayment","tradeEquity","privateIncentive"];
+                  const selectOpts = {
+                    bank:            ["VW Credit","Ally","Affinity","Cal"],
+                    term:            ["24","36","39","42","48"],
+                    year:            Array.from({length:7},(_,i)=>String(new Date().getFullYear()+1-i)),
+                    model:           ["Atlas","Taos","Jetta","Tiguan","GLI","Cross Sport","GTI","Golf R"],
+                    trim:            ["S","SE","SE Black","SEL","SE Tech","SEL Premium R-Line","SEL Premium R-Line Turbo"],
+                    privateIncentive:["750","1000","1250","1500","1750","2000","2250","2500"],
+                    milesYearly:     ["7,500","10,000","12,000","15,000","20,000"],
+                  };
                   const editField = (key) => {
-                    if (SELECT_OPTS[key]) return (
+                    if (selectOpts[key]) return (
                       <select className="meta-input" value={editForm[key] ?? ""} onChange={e => {
                         const val = e.target.value;
                         if (key === "term") {
@@ -2453,13 +2386,13 @@ export default function LeaseTracker() {
                         }
                       }}>
                         <option value="">—</option>
-                        {SELECT_OPTS[key].map(o => <option key={o} value={o}>{key==="privateIncentive"?`$${o}`:o}</option>)}
+                        {selectOpts[key].map(o => <option key={o} value={o}>{key==="privateIncentive"?`$${o}`:o}</option>)}
                       </select>
                     );
                     if (key === "milesTerm") return (
                       <input className="meta-input" value={editForm[key] ?? ""} readOnly style={{ opacity: 0.6, cursor: "default" }} />
                     );
-                    if (DOLLAR_KEYS.has(key)) return (
+                    if (dollarKeys.includes(key)) return (
                       <div style={{ position: "relative" }}>
                         <span style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", fontSize: 11.5, color: "var(--text-secondary)", pointerEvents: "none" }}>$</span>
                         <input className="meta-input" value={editForm[key] ?? ""} onChange={e => setEditForm(p => ({ ...p, [key]: e.target.value }))} onBlur={e => { const f = formatDollar(e.target.value); if (f) setEditForm(p => ({ ...p, [key]: f })); }} style={{ paddingLeft: 16 }} />
@@ -2511,7 +2444,11 @@ export default function LeaseTracker() {
                           { label: "Down Payment",      val: fmt$(c.downPayment),             key: "downPayment",    cls: c.downPayment  > 0 ? "blue" : "dim" },
                           { label: "Trade Equity",      val: c.tradeEquity > 0 ? `$${Number(c.tradeEquity).toLocaleString()}` : "$0", key: "tradeEquity", cls: c.tradeEquity > 0 ? "blue" : "dim" },
                           { label: "Incentive Value",   val: c.privateIncentive > 0 ? `$${c.privateIncentive.toLocaleString()}` : "—", key: "privateIncentive", cls: c.privateIncentive > 0 ? "blue" : "dim" },
-                          { label: "Incentive Expires", val: expandMonth(c.incentiveExp), key: "incentiveExp", cls: "" },
+                          { label: "Incentive Expires", val: (() => {
+                            if (!c.incentiveExp || c.incentiveExp === "—") return "—";
+                            const FULL_MONTHS = { Jan:"January", Feb:"February", Mar:"March", Apr:"April", May:"May", Jun:"June", Jul:"July", Aug:"August", Sep:"September", Oct:"October", Nov:"November", Dec:"December" };
+                            return c.incentiveExp.replace(/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/i, m => FULL_MONTHS[m] || m);
+                          })(), key: "incentiveExp", cls: "" },
                           { label: "Incentive Remaining",     val: (() => {
                               if (!c.incentiveExp || c.incentiveExp === "—") return "—";
                               const m = calcMonthsLeft(c.incentiveExp);
@@ -2522,16 +2459,18 @@ export default function LeaseTracker() {
                           { label: "Miles / Year",      val: fmtMi(c.milesYearly),           key: "milesYearly",    cls: "" },
                           { label: "Miles / Term",      val: fmtMi(c.milesTerm),             key: "milesTerm",      cls: "" },
                           { label: "Odometer",          val: formatMiles(c.currentMiles),    key: "currentMiles",   cls: "" },
-                          { label: "Mileage Pace", ...(() => {
-                              const mp = calcMileagePace(c); // compute once for both val and cls
-                              const val = !mp ? "—"
-                                : mp.status === "ok"      ? `On pace (proj. ${mp.projectedTotal.toLocaleString()} mi)`
-                                : mp.status === "over"    ? `Over by ~${Math.abs(mp.overage).toLocaleString()} mi`
-                                : mp.status === "warning" ? `On pace to exceed by ~${mp.overage.toLocaleString()} mi`
-                                : "—";
-                              const cls = !mp || mp.status === "ok" ? "dim"
-                                : mp.status === "over" ? "urgent" : "warning";
-                              return { val, key: null, cls };
+                          { label: "Mileage Pace", val: (() => {
+                              const mp = calcMileagePace(c);
+                              if (!mp) return "—";
+                              if (mp.status === "ok") return `On pace (proj. ${mp.projectedTotal.toLocaleString()} mi)`;
+                              if (mp.status === "over") return `Over by ~${Math.abs(mp.overage).toLocaleString()} mi`;
+                              if (mp.status === "warning") return `On pace to exceed by ~${mp.overage.toLocaleString()} mi`;
+                              return "—";
+                            })(), key: null, cls: (() => {
+                              const mp = calcMileagePace(c);
+                              if (!mp || mp.status === "ok") return "dim";
+                              if (mp.status === "over") return "urgent";
+                              return "warning";
                             })() },
                         ].map(cell)}
                       </div>
@@ -2563,15 +2502,10 @@ export default function LeaseTracker() {
                 <div className="detail-body">
                   <div className="detail-body-inner">
                   <div className="detail-notes">
-                    <span className="notes-label">
-                      Notes
-                      {(notes[selected]?.length ?? 0) > 0 && (
-                        <span className="notes-count-badge" style={{ marginLeft: 6, verticalAlign: "middle" }}>{notes[selected].length}</span>
-                      )}
-                    </span>
+                    <span className="notes-label">Notes{notes[selected]?.history?.length > 0 && <span className="notes-count-badge" style={{ marginLeft: 6 }}>{notes[selected].history.length}</span>}</span>
 
                     {/* Compose area */}
-                    {!notesOpen && !(notes[selected]?.length) ? (
+                    {!notesOpen && !(notes[selected]?.history?.length) ? (
                       <div className="notes-empty" onClick={openNotes}>
                         <span className="notes-empty-icon"><Pencil size={15} strokeWidth={1.5} style={{ opacity: 0.3 }} /></span>
                         <span className="notes-empty-text">No notes yet</span>
@@ -2608,9 +2542,9 @@ export default function LeaseTracker() {
                         </div>
 
                         {/* History log */}
-                        {(notes[selected]?.length ?? 0) > 0 && (
+                        {notes[selected]?.history?.length > 0 && (
                           <div className="notes-history">
-                            {notes[selected].map((entry) => (
+                            {notes[selected].history.map((entry) => (
                               <div key={entry.id} className="note-entry">
                                 <div className="note-timeline-col">
                                   <div className="note-timeline-dot" />
@@ -2623,8 +2557,7 @@ export default function LeaseTracker() {
                                       className="note-entry-delete"
                                       title="Delete note"
                                       onClick={async () => {
-                                      const { error: nErr } = await supabase.from("notes").delete().eq("id", entry.id);
-                                      if (nErr) { addToast("Delete Failed", "error", "Could not remove note"); return; }
+                                      await supabase.from("notes").delete().eq("id", entry.id);
                                       dispatch({ type: "DELETE_NOTE_ENTRY", id: selected, entryId: entry.id });
                                     }}
                                     >
@@ -2763,7 +2696,7 @@ export default function LeaseTracker() {
                     <label>Year</label>
                     <select value={form.year ?? ""} onChange={e => setForm(p => ({ ...p, year: e.target.value }))}>
                       <option value="">—</option>
-                      {YEAR_OPTIONS.map(y => <option key={y} value={y}>{y}</option>)}
+                      {Array.from({length:7},(_,i)=>String(new Date().getFullYear()+1-i)).map(y => <option key={y} value={y}>{y}</option>)}
                     </select>
                   </div>
                   <div className="modal-field">
@@ -2911,14 +2844,13 @@ export default function LeaseTracker() {
         {/* SETTINGS MODAL */}
         {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
 
-        {/* CONFIRM DELETE */}
-        {/* DISCARD EDITS CONFIRM */}
+        {/* CONFIRM DISCARD */}
         {confirmDiscard && (
           <div className="confirm-overlay" onClick={() => setConfirmDiscard(null)}>
             <div className="confirm-box" onClick={e => e.stopPropagation()}>
               <div className="confirm-title">Discard unsaved changes?</div>
               <div className="confirm-sub">Your edits haven't been saved.</div>
-n              <div className="confirm-actions">
+              <div className="confirm-actions">
                 <button className="btn-secondary" onClick={() => setConfirmDiscard(null)}>Keep Editing</button>
                 <button className="btn-danger" onClick={() => { setConfirmDiscard(null); setEditMode(false); confirmDiscard.action(); }}>Discard</button>
               </div>
@@ -2926,14 +2858,15 @@ n              <div className="confirm-actions">
           </div>
         )}
 
+        {/* CONFIRM DELETE */}
         {confirmDel && (() => {
-          const del = customersById.get(confirmDel);
+          const del = customers.find(x => x.id === confirmDel);
           return (
             <div className="confirm-overlay" onClick={() => setConfirmDel(null)}>
               <div className="confirm-box" onClick={e => e.stopPropagation()}>
                 <div className="confirm-title">Delete {del?.name}?</div>
                 <div className="confirm-sub">This will permanently remove {del?.name} and all their notes. This can't be undone.</div>
-n                <div className="confirm-actions">
+                <div className="confirm-actions">
                   <button className="btn-secondary" onClick={() => setConfirmDel(null)}>Cancel</button>
                   <button className="btn-danger" onClick={executeDelete}>Delete</button>
                 </div>
